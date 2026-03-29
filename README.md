@@ -1,48 +1,11 @@
-<div align="center">
+# Optimizing PLONK for improved Performance
 
-# Around the World in 80 Timesteps: <br>A Generative Approach to Global Visual Geolocation
-
-![PLONK](/.media/teaser.png)
-
-<a href="https://nicolas-dufour.github.io/" >Nicolas Dufour</a>, <a href="https://davidpicard.github.io/" >David Picard</a>, <a href="https://vicky.kalogeiton.info/" >Vicky Kalogeiton</a>, <a href="https://loiclandrieu.com/" >Loic Landrieu</a>
-</div>
-
-Introducing the first generative geolocation method based on diffusion and flow matching! We learn the relationship between visual content and location by denoising random locations conditionally to images.
-
-➜ New SOTA for visual geolocation on OpenStreetView-5M, YFCC-100M, and iNat-21
-
-➜ Generate global probability density maps and quantify localizability
-
-➜ Introduce the problem of probabilistic visual geolocation
-
-This repository contains the code for the paper "Around the World in 80 Timesteps: A Generative Approach to Global Visual Geolocation"
-
-<br>
-<br>
-
-Project website: [https://nicolas-dufour.github.io/plonk](https://nicolas-dufour.github.io/plonk)
-
-Arxiv: [https://arxiv.org/abs/2412.06781](https://arxiv.org/abs/2412.06781)
-
-HuggingFace Collection: [https://huggingface.co/collections/nicolas-dufour/around-the-world-in-80-timesteps-6758595d634129e6fc63dad9](https://huggingface.co/collections/nicolas-dufour/around-the-world-in-80-timesteps-6758595d634129e6fc63dad9)
-
-Demo: [https://huggingface.co/spaces/nicolas-dufour/PLONK](https://huggingface.co/spaces/nicolas-dufour/PLONK)
+This project is modifying PLONK ([https://nicolas-dufour.github.io/plonk](https://nicolas-dufour.github.io/plonk)), which is a diffusion model for estimating a persons location on Earth from imagery. Click on the link for more information if interested.
 
 ##  Installation
-If you want to use our models, you can directly install the `diff-plonk` package:
-```bash
-conda create -n plonk python=3.10
-conda activate plonk
-pip install diff-plonk
-```
-
-For a local installation, if you want to train the model or use the demo, you can clone the repository and install the dependencies:
-
 
 From the github repository:
 ```bash
-git clone https://github.com/nicolas-dufour/plonk.git
-cd plonk
 conda create -n plonk python=3.10
 conda activate plonk
 pip install -e .
@@ -59,9 +22,6 @@ pip install diff-plonk
 
 We provide pre-trained models for the OSV-5M, YFCC-100M, and iNat-21 datasets. You can download them from the [huggingface hub](https://huggingface.co/collections/nicolas-dufour/around-the-world-in-80-timesteps-6758595d634129e6fc63dad9).
 
-## Demo
-
-We provide a demo of the model hosted on the following [HuggingFace Space](https://huggingface.co/spaces/nicolas-dufour/PLONK).
 
 ### Running the demo locally
 
