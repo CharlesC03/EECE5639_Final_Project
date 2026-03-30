@@ -97,7 +97,11 @@ For YFCC and iNat, script to preprocess the dataset are provided in the `plonk/d
 
 ## Citation
 
-If you find this work useful for your research or use our code, please cite our paper:
+Here is a list of citations used to make this project possible.
+
+<!-- TODO: Add citations -->
+
+Here is the citation to the PLONK paper.
 
 ```bibtex
 @article{dufour2024around,
