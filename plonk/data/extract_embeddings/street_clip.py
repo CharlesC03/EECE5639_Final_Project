@@ -22,11 +22,11 @@ output_path = Path("datasets/osv5m/embeddings/street_clip")
 
 output_path.mkdir(exist_ok=True, parents=True)
 
-dataset = ImageWithPathDataset(input_path)
+dataset = ImageWithPathDataset(input_path, output_path)
 
-batch_size = 128
+batch_size = 256
 dataloader = torch.utils.data.DataLoader(
-    dataset, batch_size=batch_size, num_workers=16, collate_fn=lambda x: zip(*x)
+    dataset, batch_size=batch_size, num_workers=4, collate_fn=lambda x: zip(*x)
 )
 
 for images, output_emb_paths in tqdm(dataloader):
