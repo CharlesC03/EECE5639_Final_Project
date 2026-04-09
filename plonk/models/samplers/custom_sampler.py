@@ -75,7 +75,7 @@ def custom_riemannian_flow_sampler(
 
     # --- Helper: evaluate network with optional CFG ---
     def eval_net(x, gamma_val):
-        with torch.cuda.amp.autocast(dtype=dtype):
+        with torch.amp.autocast(x.device.type, dtype=dtype):
             if cfg_rate > 0 and conditioning_keys is not None:
                 stacked_batch["y"] = torch.cat([x, x], dim=0)
                 stacked_batch["gamma"] = gamma_val.expand(x.shape[0] * 2)
