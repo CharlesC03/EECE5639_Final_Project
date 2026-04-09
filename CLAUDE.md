@@ -7,5 +7,5 @@ Every time code is modified or new code is added, update [CHANGE_LEDGER.md](CHAN
 - **Prompt** that caused the change (the user's request)
 - **Summary** of modifications made
 
-Entries should be in reverse chronological order (newest first).
+Use one date header per day. Within a day, list entries in chronological order (oldest first).
 
