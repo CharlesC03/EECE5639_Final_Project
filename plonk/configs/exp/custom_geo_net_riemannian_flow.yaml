@@ -1,0 +1,69 @@
+# @package _global_
+#
+# Experiment config for CustomGeoNet with Riemannian flow matching.
+# Uses the existing Riemannian flow matching loss and a custom sampler.
+#
+# Train:
+#   python plonk/train.py exp=custom_geo_net_riemannian_flow mode=traineval \
+#     experiment_name=custom_geo_net
+#
+# To experiment, override from the command line:
+#   python plonk/train.py exp=custom_geo_net_riemannian_flow \
+#     model.network.block_type=self_attention \
+#     model.network.depth=8 \
+#     model.network.dim=256 \
+#     model.network.activation=silu \
+#     model.network.norm=rmsnorm
+
+defaults:
+  - override /dataset: osv5m_emb
+  - override /model: emb_cond_cartesian
+  - override /model/network: custom_geo_net
+  - override /model/train_noise_scheduler: sigmoid
+  - override /model/inference_noise_scheduler: sigmoid
+  - override /model/loss: riemannian_flow_matching
+  - override /model/manifold: sphere
+  - override /model/val_sampler: custom_riemannian
+  - override /model/test_sampler: custom_riemannian
+  - _self_
+
+model:
+  # ----- Network architecture (the fun part!) -----
+  network:
+    depth: 12
+    dim: 512
+    expansion: 4
+    block_type: adaln_mlp       # adaln_mlp | self_attention | cross_attention
+    num_heads: 4                # only used by attention blocks
+    activation: gelu            # gelu | silu | relu
+    norm: layernorm             # layernorm | rmsnorm
+    dropout: 0.0
+    residual_scale: 1.0
+    cond_strategy: add          # add | project
+
+  # ----- Optimizer -----
+  optimizer:
+    optim:
+      lr: 8e-4
+      weight_decay: 0.05
+
+  # ----- Loss -----
+  loss:
+    cond_drop_rate: 0.1
+
+  # ----- Noise schedule -----
+  train_noise_scheduler:
+    start: -7
+    end: 3
+    tau: 1.0
+  inference_noise_scheduler:
+    start: -7
+    end: 3
+    tau: 1.0
+
+  interpolant: flow_matching
+
+dataset:
+  full_batch_size: 1024
+
+experiment_name_suffix: custom_geo_net

@@ -1,0 +1,9 @@
+_target_: plonk.models.samplers.custom_sampler.custom_riemannian_flow_sampler
+_partial_: true
+num_steps: 250
+cfg_rate: ${model.cfg_rate}
+
+# --- Inference knobs (change these to experiment!) ---
+step_schedule: uniform       # uniform, cosine
+projection_interval: 1       # project onto sphere every N steps
+midpoint_correction: false   # use midpoint method for better accuracy
