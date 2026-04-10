@@ -511,7 +511,7 @@ class DiffGeolocalizer(L.LightningModule):
             state1 = torch.cat([x_1, torch.zeros_like(x_1[..., :1])], dim=-1)
             with torch.no_grad():
                 if False and isinstance(self.manifold, Sphere):
-                    print("Riemannian flow sampler")
+                    self.print("Riemannian flow sampler")
                     product_man = ProductManifold(
                         (self.manifold, self.input_dim), (Euclidean(), 1)
                     )
@@ -523,7 +523,7 @@ class DiffGeolocalizer(L.LightningModule):
                         num_steps=num_steps,
                     )
                 else:
-                    print("ODE solver")
+                    self.print("ODE solver")
                     state0 = odeint(
                         odefunc,
                         state1,
@@ -544,7 +544,7 @@ class DiffGeolocalizer(L.LightningModule):
                 * torch.log(torch.tensor(2 * np.pi, device=x_0.device))
                 / 2
             )
-        print(f"nfe: {nfe[0]}")
+        self.print(f"nfe: {nfe[0]}")
         logp1 = logp0 + logdetjac
         logp1 = logp1 / (self.input_dim * np.log(2))
         return logp1

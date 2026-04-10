@@ -1,6 +1,9 @@
 import os
+import warnings
 import hydra
 import wandb
+
+warnings.filterwarnings("ignore", message=".*isinstance.*LeafSpec.*is deprecated.*")
 from os.path import isfile, join
 from shutil import copyfile
 
@@ -43,7 +46,7 @@ def load_model(cfg, dict_config, wandb_id, callbacks):
     if isfile(join(directory, "last.ckpt")):
         checkpoint_path = join(directory, "last.ckpt")
         logger = instantiate(cfg.logger, id=wandb_id, resume="allow")
-        model = DiffGeolocalizer.load_from_checkpoint(checkpoint_path, cfg=cfg.model)
+        model = DiffGeolocalizer.load_from_checkpoint(checkpoint_path, cfg=cfg.model, weights_only=False)
         ckpt_path = join(directory, "last.ckpt")
         print(f"Loading form checkpoint ... {ckpt_path}")
     else:
@@ -140,6 +143,8 @@ def main(cfg):
         trainer.fit(model, datamodule=datamodule, ckpt_path=ckpt_path)
         cfg.mode = "test"
         trainer.test(model, datamodule=datamodule)
+
+    wandb.finish()
 
 
 if __name__ == "__main__":

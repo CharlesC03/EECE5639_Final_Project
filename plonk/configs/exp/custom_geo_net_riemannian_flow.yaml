@@ -64,6 +64,6 @@ model:
   interpolant: flow_matching
 
 dataset:
-  full_batch_size: 1024
+  full_batch_size: 2048
 
 experiment_name_suffix: custom_geo_net
