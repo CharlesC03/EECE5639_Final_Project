@@ -6,6 +6,9 @@ Changes made by Claude, in reverse chronological order.
 
 ### 2026-04-11
 
+**Prompt:** "Change it to not copy the images, just keep the npy files and the json"
+**Summary:** (Claude Opus 4.6) Removed image copying from `mobile_predict.py` output tars — `write_tar` no longer writes `.jpg` files, only `.json` and `.npy` embeddings, dramatically reducing output tar size.
+
 **Prompt:** "What was the limitation?" (profiler showed aten::copy_ at 60% CPU time)
 **Summary:** (Claude Opus 4.6) Eliminated cross-process data transfer bottleneck in `mobile_predict.py`:
 - `__getitem__` now only returns `(tensor, idx)` instead of `(tensor, key, jpg_bytes, json_bytes)`

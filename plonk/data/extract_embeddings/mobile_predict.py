@@ -111,7 +111,6 @@ def process_split(split):
             for idx, (key, jpg_bytes, json_bytes) in enumerate(samples):
                 if embeddings[idx] is None:
                     continue
-                _add_bytes_to_tar(out_tar, f"{key}.jpg", jpg_bytes)
                 if json_bytes is not None:
                     _add_bytes_to_tar(out_tar, f"{key}.json", json_bytes)
                 emb_buf = io.BytesIO()
