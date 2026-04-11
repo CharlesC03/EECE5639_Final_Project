@@ -10,8 +10,12 @@ defaults:
   - override /model/manifold: sphere
   - override /model/val_sampler: riemannian_flow_matching
   - override /model/test_sampler: riemannian_flow_matching
-  - override /computer/precision: 16-mixed
   - _self_
+
+computer:
+  precision: bf16-mixed
+  num_workers: 10
+
 
 model:
   network:
@@ -26,6 +30,6 @@ model:
   interpolant: flow_matching
 
 dataset:
-  full_batch_size: 2048
+  full_batch_size: 16384
 
 experiment_name_suffix: small_sigmoid

@@ -34,6 +34,9 @@ datamodule:
   full_batch_size: ${dataset.full_batch_size}
   eval_batch_size: ${dataset.eval_batch_size}
   num_workers: ${computer.num_workers}
+  persistent_workers: ${computer.persistent_workers}
+  pin_memory: ${computer.pin_memory}
+  prefetch_factor: ${computer.prefetch_factor}
   num_nodes: ${computer.num_nodes}
   num_devices: ${computer.devices}
   val_proportion: 0.02

@@ -1,6 +1,9 @@
 devices: 1
 progress_bar_refresh_rate: 1
-num_workers: 16
+num_workers: 12
+persistent_workers: True
+pin_memory: True
+prefetch_factor: 16
 sync_batchnorm: False
 accelerator: gpu
 precision: 32

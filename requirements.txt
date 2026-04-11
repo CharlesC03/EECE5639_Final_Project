@@ -16,3 +16,4 @@ geoopt
 einops
 torchdiffeq
 webdataset==0.2.57
+open-clip-torch>=2.20.0
