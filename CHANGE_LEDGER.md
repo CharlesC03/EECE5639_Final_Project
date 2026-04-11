@@ -4,6 +4,16 @@ Changes made by Claude, in reverse chronological order.
 
 ---
 
+### 2026-04-10
+
+**Prompt:** "Build out the code [for neighborhood sampling]. Make sure not to interfere with the current code, just make it an additional option for sampling from the distribution which I can select in the config"
+**Summary:** Added neighborhood-aware embedding fusion as an optional dataset mode:
+- Created `plonk/scripts/build_spatial_index.py` — pre-computation script that scans webdataset tar files, builds a KD-tree spatial index from image coordinates, groups images by proximity, and saves neighbor groups + embeddings as a memory-mapped file.
+- Created `plonk/data/neighborhood_dataset.py` — `NeighborhoodWebdataset` class (drop-in replacement for `GPSWebdataset`) that, for each sample, looks up its pre-computed neighbor group, randomly samples a variable number of neighbors, and averages their embeddings with the anchor image's embedding before passing to the model.
+- Created `plonk/configs/dataset/osv5m_emb_neighborhood.yaml` — Hydra config to enable neighborhood sampling via `dataset: osv5m_emb_neighborhood`. Configurable parameters: `radius`, `min_neighbors`, `max_neighbors`, `neighbor_weight`.
+
+---
+
 ### 2026-04-09
 
 **Prompt:** "Shouldn't I use a device? Not specific to cuda?"
