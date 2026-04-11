@@ -1,6 +1,6 @@
 defaults:
   - model: default
-  - computer: v100
+  - computer: rtx4090
   - dataset: osv5m_emb
   - stage: null
   - _self_
@@ -56,6 +56,7 @@ logger:
   project: diff_plonk
   log_model: False
   offline: False
+  # resume: "never"
 
 checkpoints:
   _target_: pytorch_lightning.callbacks.ModelCheckpoint
@@ -63,7 +64,7 @@ checkpoints:
   filename: 'epoch_{epoch}'
   monitor: val/loss
   save_last: True
-  save_top_k: 0
+  save_top_k: 5
   every_n_epochs: 1
   enable_version_counter: False
 
