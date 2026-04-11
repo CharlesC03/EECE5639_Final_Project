@@ -1,0 +1,60 @@
+defaults:
+  - train_transform: empty
+  - test_transform: empty
+  - _self_
+
+name: osv5m_${dataset.embedding_name}_neighborhood
+full_batch_size: 1024
+eval_batch_size: 4096
+cond_dim: 1024
+output_type: emb
+embedding_name: street_clip
+
+# Neighborhood sampling parameters
+neighborhood:
+  radius: 500          # meters — must match the radius used in build_spatial_index.py
+  min_neighbors: 0     # 0 means sometimes the anchor is used alone
+  max_neighbors: 5     # randomly sample up to this many neighbors per anchor
+  neighbor_weight: 1.0 # weight of each neighbor relative to anchor (1.0 = equal)
+
+train_dataset:
+  _partial_: true
+  _target_: plonk.data.neighborhood_dataset.NeighborhoodWebdataset
+  root: ${data_dir}/osv5m/train/
+  index_dir: ${data_dir}/osv5m/neighborhood_index/train/
+  train: true
+  embedding_name: ${dataset.embedding_name}
+  radius: ${dataset.neighborhood.radius}
+  min_neighbors: ${dataset.neighborhood.min_neighbors}
+  max_neighbors: ${dataset.neighborhood.max_neighbors}
+  neighbor_weight: ${dataset.neighborhood.neighbor_weight}
+  return_image: false
+  metadata_attributes: []
+
+val_dataset:
+  _partial_: true
+  _target_: plonk.data.neighborhood_dataset.NeighborhoodWebdataset
+  root: ${data_dir}/osv5m/val/
+  index_dir: ${data_dir}/osv5m/neighborhood_index/val/
+  train: false
+  embedding_name: ${dataset.embedding_name}
+  radius: ${dataset.neighborhood.radius}
+  min_neighbors: ${dataset.neighborhood.min_neighbors}
+  max_neighbors: ${dataset.neighborhood.max_neighbors}
+  neighbor_weight: ${dataset.neighborhood.neighbor_weight}
+  return_image: false
+  metadata_attributes: ["unique_country", "unique_region", "unique_sub-region", "unique_city"]
+
+test_dataset:
+  _partial_: true
+  _target_: plonk.data.neighborhood_dataset.NeighborhoodWebdataset
+  root: ${data_dir}/osv5m/test/
+  index_dir: ${data_dir}/osv5m/neighborhood_index/test/
+  train: false
+  embedding_name: ${dataset.embedding_name}
+  radius: ${dataset.neighborhood.radius}
+  min_neighbors: ${dataset.neighborhood.min_neighbors}
+  max_neighbors: ${dataset.neighborhood.max_neighbors}
+  neighbor_weight: ${dataset.neighborhood.neighbor_weight}
+  return_image: false
+  metadata_attributes: ["unique_country", "unique_region", "unique_sub-region", "unique_city"]
