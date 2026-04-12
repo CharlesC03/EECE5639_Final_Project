@@ -146,7 +146,6 @@ def process_split(split):
             pin_memory=True,
             prefetch_factor=4,
             collate_fn=collate_fn,
-            persistent_workers=True,
         )
 
         # Collect all embeddings indexed by sample position
@@ -158,6 +157,9 @@ def process_split(split):
             embeddings = embeddings.float().cpu().numpy()
             for emb, idx in zip(embeddings, indices):
                 all_embeddings[idx] = emb
+
+        # Shut down workers to free file descriptors before next iteration
+        del loader
 
         # Wait for previous tar write to finish before starting the next one
         if write_thread is not None:

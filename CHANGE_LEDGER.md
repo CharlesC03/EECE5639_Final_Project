@@ -6,6 +6,11 @@ Changes made by Claude, in reverse chronological order.
 
 ### 2026-04-11
 
+**Prompt:** "Too many open files error after 59/490 tar files — screen turned off during tmux run"
+**Summary:** (Claude Opus 4.6) Fixed file descriptor leak in `mobile_predict.py`:
+- Removed `persistent_workers=True` from DataLoader — it provides no benefit here since a new DataLoader with a new dataset is created every iteration, so workers can't be reused
+- Added explicit `del loader` after each iteration to promptly shut down worker processes and free file descriptors
+
 **Prompt:** "Change it to not copy the images, just keep the npy files and the json"
 **Summary:** (Claude Opus 4.6) Removed image copying from `mobile_predict.py` output tars — `write_tar` no longer writes `.jpg` files, only `.json` and `.npy` embeddings, dramatically reducing output tar size.
 
