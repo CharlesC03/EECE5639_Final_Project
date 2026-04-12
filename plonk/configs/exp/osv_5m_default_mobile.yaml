@@ -33,6 +33,6 @@ trainer:
   accumulate_grad_batches: 1
 
 dataset:
-  full_batch_size: 4096
+  full_batch_size: 2048
 
 experiment_name_suffix: small_sigmoid

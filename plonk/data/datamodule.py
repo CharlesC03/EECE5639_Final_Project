@@ -112,8 +112,7 @@ class ImageDataModule(L.LightningDataModule):
             self.val_dataset,
             batch_size=None,
             shuffle=False,
-            num_workers=self.num_workers,
-            pin_memory=self.pin_memory,
+            num_workers=0,
         ).with_length(self.num_val_batches)
 
     def test_dataloader(self):
@@ -121,8 +120,7 @@ class ImageDataModule(L.LightningDataModule):
             self.test_dataset,
             batch_size=None,
             shuffle=False,
-            num_workers=self.num_workers,
-            pin_memory=self.pin_memory,
+            num_workers=0,
         ).with_length(self.num_test_batches)
 
     def get_webdataset_length(

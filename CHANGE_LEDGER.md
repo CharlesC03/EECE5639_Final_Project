@@ -4,6 +4,14 @@ Changes made by Claude, in reverse chronological order.
 
 ---
 
+### 2026-04-12
+
+**Prompt:** "I tried running it but it broke half way through its validation run, why?"
+**Model:** Claude Sonnet 4.6
+**Summary:** Fixed typo in `plonk/configs/config.yaml` line 52: `val_check_interval: 250   00` → `val_check_interval: 25000`. Also reverted `num_workers` back to 0 for val/test dataloaders in `plonk/data/datamodule.py`. The previous change to use 12 workers caused `wds.split_by_worker` to split shards across 12 workers — if fewer shards existed than workers, some workers got nothing and validation stopped early (half-way through).
+
+---
+
 ### 2026-04-11
 
 **Prompt:** "Training pausing during training — diagnosed as DataLoader round-robin stall + batch size too large for data pipeline"
