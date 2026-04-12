@@ -6,6 +6,14 @@ Changes made by Claude, in reverse chronological order.
 
 ### 2026-04-11
 
+**Prompt:** "Training pausing during training — diagnosed as DataLoader round-robin stall + batch size too large for data pipeline"
+**Summary:** (Claude Opus 4.6)
+- Added `accumulate_grad_batches: 4` to `plonk/configs/exp/osv_5m_default_mobile.yaml` with `full_batch_size: 2048` (effective batch 8192 via gradient accumulation, keeps data pipeline ahead of GPU)
+- Added `num_workers` and `pin_memory` to val and test dataloaders in `plonk/data/datamodule.py` (were hardcoded to `num_workers=0`)
+
+**Prompt:** "ValueError: didn't find dinov2_vitl14_registers.npy in mobileclip2_s4 tars"
+**Summary:** (Claude Opus 4.6) Fixed `embedding_name` in `plonk/configs/dataset/osv5m_emb_mobile.yaml` from `dinov2_vitl14_registers` to `mobileclip2_s4` to match the actual `.npy` files in the extracted embedding tars.
+
 **Prompt:** "Too many open files error after 59/490 tar files — screen turned off during tmux run"
 **Summary:** (Claude Opus 4.6) Fixed file descriptor leak in `mobile_predict.py`:
 - Removed `persistent_workers=True` from DataLoader — it provides no benefit here since a new DataLoader with a new dataset is created every iteration, so workers can't be reused
