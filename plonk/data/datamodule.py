@@ -16,6 +16,9 @@ class ImageDataModule(L.LightningDataModule):
         test_dataset,
         full_batch_size,
         num_workers,
+        persistent_workers=False,
+        pin_memory=False,
+        prefetch_factor=2,
         eval_batch_size=None,
         num_nodes=1,
         num_devices=1,
@@ -28,6 +31,9 @@ class ImageDataModule(L.LightningDataModule):
             "test": test_dataset,
         }
         self.num_workers = num_workers
+        self.persistent_workers = persistent_workers and num_workers > 1
+        self.pin_memory = pin_memory
+        self.prefetch_factor = prefetch_factor
         self.collate_fn = dict_collate_fn()
         self.full_batch_size = full_batch_size
         self.train_batch_size = full_batch_size // (num_nodes * num_devices)
@@ -87,7 +93,9 @@ class ImageDataModule(L.LightningDataModule):
             batch_size=None,
             shuffle=False,
             num_workers=self.num_workers,
-            # persistent_workers=self.num_workers > 1,
+            persistent_workers=self.persistent_workers,
+            pin_memory=self.pin_memory,
+            prefetch_factor=self.prefetch_factor,
         ).with_length(self.num_train_batches)
         # return DataLoader(
         #     self.train_dataset,

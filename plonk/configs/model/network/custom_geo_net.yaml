@@ -1,0 +1,21 @@
+_target_: plonk.models.networks.custom_net.CustomGeoNet
+input_dim: 3
+dim: 512
+depth: 12
+expansion: 4
+cond_dim: ${dataset.cond_dim}
+
+# --- Architecture knobs (change these to experiment!) ---
+# Block type: "adaln_mlp", "self_attention", "cross_attention"
+# Can also be a list like ["adaln_mlp", "adaln_mlp", "self_attention", ...]
+block_type: adaln_mlp
+num_heads: 4
+activation: gelu       # gelu, silu, relu
+norm: layernorm        # layernorm, rmsnorm
+dropout: 0.0
+residual_scale: 1.0
+
+# --- Conditioning ---
+time_scaling: 1000.0
+noise_embedding_type: positional   # positional, fourier
+cond_strategy: add                 # add, project

@@ -59,7 +59,8 @@ def reverse(pred, gt, area):
             for lat, lon in zip(
                 np.degrees(pred[:, 0].cpu()), np.degrees(pred[:, 1].cpu())
             )
-        ]
+        ],
+        verbose=False,
     )
     if "continent" in area:
         continent = torch.load("continent.pt")

@@ -1,6 +1,6 @@
 defaults:
   - model: default
-  - computer: v100
+  - computer: rtx4090
   - dataset: osv5m_emb
   - stage: null
   - _self_
@@ -34,6 +34,9 @@ datamodule:
   full_batch_size: ${dataset.full_batch_size}
   eval_batch_size: ${dataset.eval_batch_size}
   num_workers: ${computer.num_workers}
+  persistent_workers: ${computer.persistent_workers}
+  pin_memory: ${computer.pin_memory}
+  prefetch_factor: ${computer.prefetch_factor}
   num_nodes: ${computer.num_nodes}
   num_devices: ${computer.devices}
   val_proportion: 0.02
@@ -56,6 +59,7 @@ logger:
   project: diff_plonk
   log_model: False
   offline: False
+  # resume: "never"
 
 checkpoints:
   _target_: pytorch_lightning.callbacks.ModelCheckpoint
@@ -63,7 +67,7 @@ checkpoints:
   filename: 'epoch_{epoch}'
   monitor: val/loss
   save_last: True
-  save_top_k: 0
+  save_top_k: 5
   every_n_epochs: 1
   enable_version_counter: False
 
