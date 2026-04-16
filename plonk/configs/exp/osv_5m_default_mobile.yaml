@@ -4,8 +4,8 @@ defaults:
   - override /dataset: osv5m_emb_mobile
   - override /model: emb_cond_cartesian
   - override /model/network: geo_adaln_mlp
-  - override /model/train_noise_scheduler: linear
-  - override /model/inference_noise_scheduler: linear
+  - override /model/train_noise_scheduler: sigmoid
+  - override /model/inference_noise_scheduler: sigmoid
   - override /model/loss: riemannian_flow_matching
   - override /model/manifold: sphere
   - override /model/val_sampler: riemannian_flow_matching
@@ -27,12 +27,21 @@ model:
       weight_decay: 0.05
   loss:
     cond_drop_rate: 0.1
+  train_noise_scheduler:
+    start: -7
+    end: 3
+    tau: 1.0
+  inference_noise_scheduler:
+    start: -7
+    end: 3
+    tau: 1.0
   interpolant: flow_matching
+
 
 trainer:
   accumulate_grad_batches: 1
 
 dataset:
-  full_batch_size: 2048
+  full_batch_size: 1024
 
 experiment_name_suffix: small_sigmoid

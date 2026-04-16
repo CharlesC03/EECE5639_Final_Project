@@ -4,6 +4,14 @@ Changes made by Claude, in reverse chronological order.
 
 ---
 
+### 2026-04-15
+
+**Prompt:** "Why am I getting the following error? TypeError: LinearScheduler.__init__() got an unexpected keyword argument 'tau'"
+**Model:** Claude Sonnet 4.6
+**Summary:** Removed `tau: 1.0` from `train_noise_scheduler` and `inference_noise_scheduler` sections in `plonk/configs/exp/osv_5m_default_dino.yaml` and `plonk/configs/exp/osv_5m_default_mobile.yaml`. The configs were using the `linear` scheduler but had `tau` overrides copied from a sigmoid-based config — `LinearScheduler` doesn't accept `tau`.
+
+---
+
 ### 2026-04-12
 
 **Prompt:** "I tried running it but it broke half way through its validation run, why?"
