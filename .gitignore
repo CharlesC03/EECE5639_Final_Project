@@ -179,3 +179,4 @@ plonk/datasets/
 /game/select.csv
 notebooks
 .streamlit
+local_models/

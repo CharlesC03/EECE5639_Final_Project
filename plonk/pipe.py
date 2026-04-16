@@ -14,6 +14,8 @@ from plonk.models.schedulers import (
 from plonk.models.preconditioning import DDPMPrecond
 from torchvision import transforms
 from transformers import CLIPProcessor, CLIPVisionModel
+import open_clip
+from timm.utils import reparameterize_model
 from plonk.utils.image_processing import CenterCrop
 import numpy as np
 from plonk.utils.manifolds import Sphere
@@ -23,6 +25,14 @@ from tqdm import tqdm
 
 device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 MODELS = {
+    "local_models/Default_DINO_Model": {
+        "emb_name": "dinov2",
+        "sampler": riemannian_flow_sampler,
+    },
+    "local_models/my_plonk_model": {
+        "emb_name": "mobile_clip",
+        "sampler": riemannian_flow_sampler,
+    },
     "nicolas-dufour/PLONK_YFCC": {
         "emb_name": "dinov2",
         "sampler": riemannian_flow_sampler,
@@ -107,6 +117,26 @@ class DinoV2FeatureExtractor:
         return batch
 
 
+class MobileClipFeatureExtractor:
+    def __init__(self, device=device):
+        self.device = device
+        model, _, preprocess = open_clip.create_model_and_transforms(
+            "MobileCLIP2-S4", pretrained="dfndr2b"
+        )
+        model = reparameterize_model(model)
+        self.emb_model = model.eval().to(device)
+        self.preprocess = preprocess
+
+    def __call__(self, batch):
+        with torch.no_grad():
+            imgs = torch.stack(
+                [self.preprocess(img) for img in batch["img"]]
+            ).to(self.device)
+            embeddings = self.emb_model.encode_image(imgs)
+        batch["emb"] = embeddings
+        return batch
+
+
 class StreetClipFeatureExtractor:
     def __init__(self, device=device):
         self.device = device
@@ -130,6 +160,8 @@ def load_prepocessing(model_name, dtype=torch.float32):
         return DinoV2FeatureExtractor()
     elif MODELS[model_name]["emb_name"] == "street_clip":
         return StreetClipFeatureExtractor()
+    elif MODELS[model_name]["emb_name"] == "mobile_clip":
+        return MobileClipFeatureExtractor()
     else:
         raise ValueError(f"Embedding model {MODELS[model_name]['emb_name']} not found")
 
@@ -314,6 +346,7 @@ class PlonkPipeline:
         scheduler=None,
         cfg=0,
         generator=None,
+        return_trajectories=False,
     ):
         """Sample from the model given conditioning.
 
@@ -371,6 +404,7 @@ class PlonkPipeline:
                 scheduler=scheduler,
                 cfg_rate=cfg,
                 generator=generator,
+                return_trajectories=return_trajectories,
             )
         else:
             output = sampler(
@@ -381,9 +415,20 @@ class PlonkPipeline:
                 num_steps=num_steps,
                 cfg_rate=cfg,
                 generator=generator,
+                return_trajectories=return_trajectories,
             )
 
         # Apply postprocessing and return
+        if return_trajectories:
+            output, traj = output
+            output = self.postprocessing(output)
+            output = np.degrees(output.detach().cpu().numpy())
+            traj_gps = [
+                np.degrees(self.postprocessing(t).detach().cpu().numpy())
+                for t in traj
+            ]
+            return output, traj_gps
+
         output = self.postprocessing(output)
         # To degrees
         output = np.degrees(output.detach().cpu().numpy())

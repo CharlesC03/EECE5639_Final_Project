@@ -4,6 +4,22 @@ Changes made by Claude, in reverse chronological order.
 
 ---
 
+### 2026-04-16
+
+**Prompt:** "For the demo I need to install other packages, is there a way to download both the demo and training packages? Yes please"
+**Model:** Claude Sonnet 4.6
+**Summary:** Updated `setup.py`: added `open-clip-torch>=2.20.0` and `timm` to base `install_requires` (needed for `MobileClipFeatureExtractor` in `pipe.py`); added `joblib` and `peft` to the `train` extras. Both extras can now be installed together with `pip install -e ".[train,demo]"`.
+
+**Prompt:** "For this code would it be possible to see how the randomness evolves over time into a position?"
+**Model:** Claude Sonnet 4.6
+**Summary:** Added `return_trajectories=False` parameter to `PlonkPipeline.__call__` in `plonk/pipe.py`. When `True`, the sampler's intermediate states are converted to GPS degrees and returned alongside the final output as a list of `(batch_size, 2)` arrays — one per denoising step.
+
+**Prompt:** "I tried running the next cell but got the following error: RuntimeError: mat1 and mat2 shapes cannot be multiplied (1024x1024 and 768x512)"
+**Model:** Claude Sonnet 4.6
+**Summary:** Added `MobileClipFeatureExtractor` class to `plonk/pipe.py` using `open_clip` with `MobileCLIP2-S4 (pretrained="dfndr2b")` — the same model used during training. Added `"mobile_clip"` branch to `load_prepocessing()`. Updated the `local_models/my_plonk_model` entry in `MODELS` from `emb_name: "street_clip"` to `emb_name: "mobile_clip"` to match the 768-dim embeddings the checkpoint was trained with.
+
+---
+
 ### 2026-04-15
 
 **Prompt:** "Why am I getting the following error? TypeError: LinearScheduler.__init__() got an unexpected keyword argument 'tau'"
