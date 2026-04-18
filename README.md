@@ -47,6 +47,14 @@ To evaluate the model, you can use the following command:
 python plonk/train.py exp=osv_5m_geoadalnmlp_r3_small_sigmoid_flow_riemann mode=eval experiment_name=My_OSV_5M_Experiment
 ```
 
+## Demo Model
+
+Make sure to clean the photos of their metadata to save privacy.
+
+```
+exiftool -all= -r demo/examples/ -overwrite_original
+```
+
 ## Different Project Instructions
 
 ### Level 1 Instructions
