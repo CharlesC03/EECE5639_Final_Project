@@ -4,6 +4,24 @@ Changes made by Claude, in reverse chronological order.
 
 ---
 
+### 2026-04-18
+
+**Prompt:** "I tried to run the training function but it failed. [FileNotFoundError: ...index_street_clip_r100.pkl]"
+**Model:** Claude Opus 4.7 (1M context)
+**Summary:** The user changed `dataset.neighborhood.radius` from 500 to 100 but had no r=100 index built. Before building, refactored `plonk/scripts/build_spatial_index.py` to stream embeddings directly into the memory-mapped `.npy` as tars are scanned (prior version accumulated ~4.9M × 1024 float32 in a Python list ≈ 20 GB peak RAM, which would have OOMed on the 30 GB machine). Also switched neighbor queries from `tree.query_ball_tree(tree, r)` (materializes all pairs at once) to batched `tree.query_ball_point(coords[i:i+B], r)` with `--query_batch_size` knob, and changed `--radius` from float to int so filenames look like `r100.pkl` not `r100.0.pkl`. Added `peek_emb_dim` + `_total_samples_from_sizes` helpers to size the memmap up front from `sizes.json`. Smoke-tested on val split (49k samples, ~7s). Train + test builds completed after ~15 min. Neighbor coverage at r=100m: train 45.7% have ≥1 neighbor (mean=0.67, max=9), val 0.6% (max=1), test 14.8% (mean=0.18, max=8).
+
+---
+
+### 2026-04-17
+
+**Prompt:** "You wrote code to find images near eachother so during the training the model could learn on multiple near by images. Can you find the code you wrote and verify its functioning and if not or if there are parts missing fix it."
+**Model:** Claude Opus 4.7 (1M context)
+**Summary (2):** Added `plonk/configs/exp/osv_5m_neighborhood.yaml` — experiment config mirroring `osv_5m_default_dino.yaml` but with `dataset: osv5m_emb_neighborhood`. Sets `radius=500, min_neighbors=0, max_neighbors=5, neighbor_weight=1.0`, `full_batch_size=1024`, `experiment_name_suffix=neighborhood_r500_k5`. Verified Hydra composes correctly (street_clip, 1024 cond_dim, `NeighborhoodWebdataset` target).
+
+**Summary:** Verified neighborhood sampling stack (`plonk/scripts/build_spatial_index.py`, `plonk/data/neighborhood_dataset.py`, `plonk/configs/dataset/osv5m_emb_neighborhood.yaml`) end-to-end against the existing `street_clip_r500` index on `plonk/datasets/osv5m/train/`. Pipeline produces correct `(emb, gps)` tensors and actually fuses neighbor embeddings (29/50 samples modified in the smoke test). Removed dead code in `neighborhood_dataset.py`: the `_strip_internal_keys` step was a no-op because `wds.map` re-injects `__key__` into the sample after any mapper; also removed the redundant identity transform for `__key__` in `outputs_transforms`. Kept the `outputs_rename["__key__"] = "__key__"` entry because `filter_dict_keys` does drop keys not in its arg list. `__key__` now rides through to the collated batch as a list of strings, which the training module ignores.
+
+---
+
 ### 2026-04-16
 
 **Prompt:** "For the demo I need to install other packages, is there a way to download both the demo and training packages? Yes please"

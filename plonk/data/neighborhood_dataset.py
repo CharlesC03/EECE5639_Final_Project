@@ -197,9 +197,10 @@ class NeighborhoodWebdataset(wds.DataPipeline):
         outputs_rename["gps"] = "json"
         outputs_transforms["gps"] = get_gps
 
-        # Preserve __key__ through the pipeline
+        # Preserve __key__ through filter_dict_keys so _fuse_neighbors can read it.
+        # (wds.rename/map_dict/decode all preserve it automatically, but filter_dict_keys
+        # drops any key not explicitly listed.)
         outputs_rename["__key__"] = "__key__"
-        outputs_transforms["__key__"] = lambda x: x
 
         pipeline.extend(
             [
@@ -220,16 +221,9 @@ class NeighborhoodWebdataset(wds.DataPipeline):
             ]
         )
 
-        # Add the neighborhood fusion step, then strip internal keys
         pipeline.append(wds.map(self._fuse_neighbors, handler=log_and_continue))
-        pipeline.append(wds.map(self._strip_internal_keys))
 
         super().__init__(*pipeline)
-
-    @staticmethod
-    def _strip_internal_keys(sample):
-        """Remove webdataset internal keys (__key__, __url__) before collation."""
-        return {k: v for k, v in sample.items() if not k.startswith("__")}
 
     def _fuse_neighbors(self, sample):
         """Look up neighbors and fuse their embeddings with the anchor."""
