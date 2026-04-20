@@ -51,6 +51,7 @@ class NeighborhoodWebdataset(wds.DataPipeline):
         min_neighbors=0,
         max_neighbors=5,
         neighbor_weight=1.0,
+        fuse_mode="average",
         image_transforms=None,
         distributed=True,
         train=True,
@@ -72,6 +73,8 @@ class NeighborhoodWebdataset(wds.DataPipeline):
             min_neighbors: minimum number of neighbors to sample (0 = sometimes use anchor alone)
             max_neighbors: maximum number of neighbors to sample per anchor
             neighbor_weight: weight of each neighbor relative to anchor (1.0 = equal weight)
+            fuse_mode: "average" — weighted-average into emb (original behavior);
+                       "attention" — return padded neighbor_embs + neighbor_mask for model-side fusion
             image_transforms: optional image transforms
             Other args: same as GPSWebdataset
         """
@@ -79,6 +82,7 @@ class NeighborhoodWebdataset(wds.DataPipeline):
         self.min_neighbors = min_neighbors
         self.max_neighbors = max_neighbors
         self.neighbor_weight = neighbor_weight
+        self.fuse_mode = fuse_mode
         self.train = train
 
         # Load the pre-built spatial index
@@ -226,34 +230,53 @@ class NeighborhoodWebdataset(wds.DataPipeline):
         super().__init__(*pipeline)
 
     def _fuse_neighbors(self, sample):
-        """Look up neighbors and fuse their embeddings with the anchor."""
+        """Look up neighbors and fuse according to fuse_mode.
+
+        "average": weighted-average neighbor embeddings into sample["emb"] (original behavior).
+        "attention": leave sample["emb"] as the raw anchor and add:
+            sample["neighbor_embs"]: (max_neighbors, emb_dim) zero-padded
+            sample["neighbor_mask"]: (max_neighbors,) bool — True = valid slot
+        """
         image_id = sample.get("__key__", None)
+        k = 0
+        selected_idxs = []
 
         if image_id is not None and image_id in self.neighbor_index:
             neighbors = self.neighbor_index[image_id]
-
             if len(neighbors) > 0:
-                # Random number of neighbors to sample
                 k = random.randint(
                     min(self.min_neighbors, len(neighbors)),
                     min(self.max_neighbors, len(neighbors)),
                 )
-
                 if k > 0:
                     selected = random.sample(neighbors, k)
-                    # Look up neighbor embeddings from memmap
-                    neighbor_idxs = [self.id_to_idx[nid] for nid in selected]
-                    neighbor_embs = torch.from_numpy(
-                        self.embeddings[neighbor_idxs].copy()
-                    )  # (k, emb_dim)
+                    selected_idxs = [self.id_to_idx[nid] for nid in selected]
 
-                    # Weighted average: anchor weight=1, each neighbor=neighbor_weight
-                    anchor_emb = sample["emb"]  # (emb_dim,)
-                    total_weight = 1.0 + k * self.neighbor_weight
-                    fused = (
-                        anchor_emb + self.neighbor_weight * neighbor_embs.sum(dim=0)
-                    ) / total_weight
-                    sample["emb"] = fused
+        if self.fuse_mode == "average":
+            if k > 0:
+                neighbor_embs = torch.from_numpy(
+                    self.embeddings[selected_idxs].copy()
+                )
+                anchor_emb = sample["emb"]
+                total_weight = 1.0 + k * self.neighbor_weight
+                sample["emb"] = (
+                    anchor_emb + self.neighbor_weight * neighbor_embs.sum(dim=0)
+                ) / total_weight
+
+        elif self.fuse_mode == "attention":
+            emb_dim = sample["emb"].shape[-1]
+            max_k = self.max_neighbors
+            padded = torch.zeros(max_k, emb_dim, dtype=sample["emb"].dtype)
+            mask = torch.zeros(max_k, dtype=torch.bool)
+            if k > 0:
+                n_embs = torch.from_numpy(self.embeddings[selected_idxs].copy())
+                padded[:k] = n_embs
+                mask[:k] = True
+            sample["neighbor_embs"] = padded
+            sample["neighbor_mask"] = mask
+
+        else:
+            raise ValueError(f"Unknown fuse_mode: {self.fuse_mode!r}")
 
         return sample
 

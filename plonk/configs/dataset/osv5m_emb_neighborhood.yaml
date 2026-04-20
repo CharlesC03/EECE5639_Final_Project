@@ -13,9 +13,10 @@ embedding_name: street_clip
 # Neighborhood sampling parameters
 neighborhood:
   radius: 100          # meters — must match the radius used in build_spatial_index.py
-  min_neighbors: 0     # 0 means sometimes the ancHoihor is used alone
+  min_neighbors: 0     # 0 means sometimes the anchor is used alone
   max_neighbors: 5     # randomly sample up to this many neighbors per anchor
   neighbor_weight: 1.0 # weight of each neighbor relative to anchor (1.0 = equal)
+  fuse_mode: average   # "average": weighted-avg into emb; "attention": return padded tensors
 
 train_dataset:
   _partial_: true
@@ -28,6 +29,7 @@ train_dataset:
   min_neighbors: ${dataset.neighborhood.min_neighbors}
   max_neighbors: ${dataset.neighborhood.max_neighbors}
   neighbor_weight: ${dataset.neighborhood.neighbor_weight}
+  fuse_mode: ${dataset.neighborhood.fuse_mode}
   return_image: false
   metadata_attributes: []
 
@@ -42,6 +44,7 @@ val_dataset:
   min_neighbors: ${dataset.neighborhood.min_neighbors}
   max_neighbors: ${dataset.neighborhood.max_neighbors}
   neighbor_weight: ${dataset.neighborhood.neighbor_weight}
+  fuse_mode: ${dataset.neighborhood.fuse_mode}
   return_image: false
   metadata_attributes: ["unique_country", "unique_region", "unique_sub-region", "unique_city"]
 
@@ -56,5 +59,6 @@ test_dataset:
   min_neighbors: ${dataset.neighborhood.min_neighbors}
   max_neighbors: ${dataset.neighborhood.max_neighbors}
   neighbor_weight: ${dataset.neighborhood.neighbor_weight}
+  fuse_mode: ${dataset.neighborhood.fuse_mode}
   return_image: false
   metadata_attributes: ["unique_country", "unique_region", "unique_sub-region", "unique_city"]

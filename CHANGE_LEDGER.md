@@ -4,6 +4,14 @@ Changes made by Claude, in reverse chronological order.
 
 ---
 
+### 2026-04-20
+
+**Prompt:** "I want to do learned cross-attention in the model"
+**Model:** Claude Sonnet 4.6
+**Summary:** Added `NeighborhoodAttentionPooler` to `plonk/models/networks/mlp.py` — uses `nn.MultiheadAttention` where the anchor is the query and the neighbor sequence (anchor + padded neighbors) is keys/values; out_proj zero-init so training starts identical to no-pooler baseline. Added `use_neighbor_attention` and `neighbor_attention_heads` args to `GeoAdaLNMLP`; pooler is skipped gracefully at inference when `neighbor_embs` is absent from the batch. Added `fuse_mode` param to `NeighborhoodWebdataset` in `neighborhood_dataset.py`: `"average"` preserves the existing weighted-average behavior; `"attention"` returns padded `neighbor_embs` `(max_neighbors, emb_dim)` and `neighbor_mask` `(max_neighbors,)` bool tensors alongside the raw anchor `emb`. Updated `osv5m_emb_neighborhood.yaml` to thread `fuse_mode` through to all three dataset splits (default `average`, so existing configs are unaffected). Created `plonk/configs/model/network/geo_adaln_mlp_neighborhood.yaml` and `plonk/configs/exp/osv_5m_neighborhood_attention.yaml` for the attention experiment.
+
+---
+
 ### 2026-04-18
 
 **Prompt:** "I tried to run the training function but it failed. [FileNotFoundError: ...index_street_clip_r100.pkl]"

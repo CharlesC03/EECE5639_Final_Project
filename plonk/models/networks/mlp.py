@@ -70,8 +70,57 @@ class AdaLNMLPBlock(nn.Module):
         return x
 
 
+class NeighborhoodAttentionPooler(nn.Module):
+    """Cross-attention pooler: the anchor image (query) attends over its spatial neighbors
+    (keys/values) so the model can learn which nearby scenes are most informative.
+
+    The anchor is always included in the key/value sequence so attention can fall back to
+    it when no valid neighbors are present. Zero-init on out_proj means the module starts
+    as an identity — training begins identical to the no-pooler baseline.
+    """
+
+    def __init__(self, emb_dim: int, num_heads: int = 4):
+        super().__init__()
+        self.attn = nn.MultiheadAttention(emb_dim, num_heads, batch_first=True)
+        self.norm = nn.LayerNorm(emb_dim)
+        nn.init.zeros_(self.attn.out_proj.weight)
+        nn.init.zeros_(self.attn.out_proj.bias)
+
+    def forward(
+        self,
+        anchor: torch.Tensor,     # (B, D)
+        neighbors: torch.Tensor,  # (B, K, D) — zero-padded
+        mask: torch.Tensor,       # (B, K) bool — True = valid neighbor slot
+    ) -> torch.Tensor:            # (B, D)
+        B = neighbors.shape[0]
+        tokens = torch.cat([anchor.unsqueeze(1), neighbors], dim=1)  # (B, K+1, D)
+        # nn.MultiheadAttention key_padding_mask: True = ignore, so invert our validity mask
+        token_valid = torch.cat(
+            [torch.ones(B, 1, dtype=torch.bool, device=anchor.device), mask], dim=1
+        )
+        key_padding_mask = ~token_valid  # (B, K+1)
+
+        attn_out, _ = self.attn(
+            query=anchor.unsqueeze(1),
+            key=tokens,
+            value=tokens,
+            key_padding_mask=key_padding_mask,
+            need_weights=False,
+        )
+        return self.norm(anchor + attn_out.squeeze(1))
+
+
 class GeoAdaLNMLP(nn.Module):
-    def __init__(self, input_dim, dim, depth, expansion, cond_dim):
+    def __init__(
+        self,
+        input_dim,
+        dim,
+        depth,
+        expansion,
+        cond_dim,
+        use_neighbor_attention: bool = False,
+        neighbor_attention_heads: int = 4,
+    ):
         super().__init__()
         self.time_embedder = TimeEmbedder("positional", dim // 4, 1000, expansion=4)
         self.cond_mapper = nn.Linear(cond_dim, dim)
@@ -85,12 +134,21 @@ class GeoAdaLNMLP(nn.Module):
         )
         self.final_ln = nn.LayerNorm(dim, elementwise_affine=False)
         self.final_linear = nn.Linear(dim, input_dim)
+        self.neighbor_pooler = (
+            NeighborhoodAttentionPooler(cond_dim, neighbor_attention_heads)
+            if use_neighbor_attention
+            else None
+        )
 
     def forward(self, batch):
         x = batch["y"]
         x = self.initial_mapper(x)
         gamma = batch["gamma"]
         cond = batch["emb"]
+        if self.neighbor_pooler is not None and "neighbor_embs" in batch:
+            cond = self.neighbor_pooler(
+                cond, batch["neighbor_embs"], batch["neighbor_mask"]
+            )
         t = self.time_embedder(gamma)
         cond = self.cond_mapper(cond)
         cond = cond + t
