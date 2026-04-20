@@ -31,6 +31,11 @@ model:
     end: 3
     tau: 1.0
   interpolant: flow_matching
+  # Per-k test evaluation: rebuilds the weighted average with first k neighbors
+  # for each k value and prints a summary table. test_neighbor_weight must match
+  # dataset.neighborhood.neighbor_weight below.
+  test_neighbor_counts: [0, 1, 2, 3, 4, 5]
+  test_neighbor_weight: 1.0
 
 dataset:
   full_batch_size: 1024

@@ -31,6 +31,9 @@ model:
     end: 3
     tau: 1.0
   interpolant: flow_matching
+  # Per-k test evaluation: run test once per neighbor count and print a summary table.
+  # Remove this field (or set to null) to skip and use the normal single-value test.
+  test_neighbor_counts: [0, 1, 2, 3, 4, 5]
 
 dataset:
   full_batch_size: 1024
