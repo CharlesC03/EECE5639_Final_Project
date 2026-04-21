@@ -4,6 +4,14 @@ Changes made by Claude, in reverse chronological order.
 
 ---
 
+### 2026-04-21
+
+**Prompt:** "Would it be better to randomize the location of where the images are inputted into the model? ... Add this in as a parameter which i can adjust from the config file"
+**Model:** Claude Sonnet 4.6
+**Summary:** Added `shuffle_neighbors` parameter to `NeighborhoodAttentionPooler` and `GeoAdaLNMLP` in `plonk/models/networks/mlp.py`. When enabled, randomly permutes the K neighbor slots per batch item during training only (no-op at inference), so the model cannot learn a positional bias from neighbor order. Added `shuffle_neighbors: false` to `plonk/configs/model/network/geo_adaln_mlp_neighborhood.yaml` to expose the flag via config.
+
+---
+
 ### 2026-04-20
 
 **Prompt:** "Could you update the neighbor testing to also list the number of images its tested for each of the amount of neighbors testing so I can know the sample size"

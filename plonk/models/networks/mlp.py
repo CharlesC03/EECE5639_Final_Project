@@ -79,12 +79,13 @@ class NeighborhoodAttentionPooler(nn.Module):
     as an identity — training begins identical to the no-pooler baseline.
     """
 
-    def __init__(self, emb_dim: int, num_heads: int = 4):
+    def __init__(self, emb_dim: int, num_heads: int = 4, shuffle_neighbors: bool = False):
         super().__init__()
         self.attn = nn.MultiheadAttention(emb_dim, num_heads, batch_first=True)
         self.norm = nn.LayerNorm(emb_dim)
-        nn.init.zeros_(self.attn.out_proj.weight)
-        nn.init.zeros_(self.attn.out_proj.bias)
+        self.shuffle_neighbors = shuffle_neighbors
+        # nn.init.zeros_(self.attn.out_proj.weight)
+        # nn.init.zeros_(self.attn.out_proj.bias)
 
     def forward(
         self,
@@ -93,6 +94,12 @@ class NeighborhoodAttentionPooler(nn.Module):
         mask: torch.Tensor,       # (B, K) bool — True = valid neighbor slot
     ) -> torch.Tensor:            # (B, D)
         B = neighbors.shape[0]
+        if self.training and self.shuffle_neighbors:
+            K = neighbors.shape[1]
+            perm = torch.rand(B, K, device=neighbors.device).argsort(dim=1)
+            idx = torch.arange(B, device=neighbors.device).unsqueeze(1)
+            neighbors = neighbors[idx, perm]
+            mask = mask[idx, perm]
         tokens = torch.cat([anchor.unsqueeze(1), neighbors], dim=1)  # (B, K+1, D)
         # nn.MultiheadAttention key_padding_mask: True = ignore, so invert our validity mask
         token_valid = torch.cat(
@@ -120,6 +127,7 @@ class GeoAdaLNMLP(nn.Module):
         cond_dim,
         use_neighbor_attention: bool = False,
         neighbor_attention_heads: int = 1,
+        shuffle_neighbors: bool = False,
     ):
         super().__init__()
         self.time_embedder = TimeEmbedder("positional", dim // 4, 1000, expansion=4)
@@ -135,7 +143,7 @@ class GeoAdaLNMLP(nn.Module):
         self.final_ln = nn.LayerNorm(dim, elementwise_affine=False)
         self.final_linear = nn.Linear(dim, input_dim)
         self.neighbor_pooler = (
-            NeighborhoodAttentionPooler(cond_dim, neighbor_attention_heads)
+            NeighborhoodAttentionPooler(cond_dim, neighbor_attention_heads, shuffle_neighbors)
             if use_neighbor_attention
             else None
         )
