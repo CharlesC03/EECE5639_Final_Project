@@ -5,4 +5,4 @@ depth: 8
 expansion: 4
 cond_dim: ${dataset.cond_dim}
 use_neighbor_attention: true
-neighbor_attention_heads: 4
+neighbor_attention_heads: 1

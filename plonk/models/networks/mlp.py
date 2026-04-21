@@ -119,7 +119,7 @@ class GeoAdaLNMLP(nn.Module):
         expansion,
         cond_dim,
         use_neighbor_attention: bool = False,
-        neighbor_attention_heads: int = 4,
+        neighbor_attention_heads: int = 1,
     ):
         super().__init__()
         self.time_embedder = TimeEmbedder("positional", dim // 4, 1000, expansion=4)
