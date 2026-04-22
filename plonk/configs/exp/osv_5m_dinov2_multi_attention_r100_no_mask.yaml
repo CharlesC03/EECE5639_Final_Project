@@ -1,0 +1,47 @@
+# @package _global_
+
+defaults:
+  - override /dataset: osv5m_emb_neighborhood_dinov2_r100
+  - override /model: emb_cond_cartesian
+  - override /model/network: geo_adaln_mlp_neighborhood_rand_cond
+  - override /model/train_noise_scheduler: sigmoid
+  - override /model/inference_noise_scheduler: sigmoid
+  - override /model/loss: riemannian_flow_matching
+  - override /model/manifold: sphere
+  - override /model/val_sampler: riemannian_flow_matching
+  - override /model/test_sampler: riemannian_flow_matching
+  - _self_
+
+model:
+  network:
+    depth: 12
+    dim: 512
+    use_attention_mask: False
+  optimizer:
+    optim:
+      lr: 8e-4
+      weight_decay: 0.05
+  loss:
+    cond_drop_rate: 0.1
+  train_noise_scheduler:
+    start: -7
+    end: 3
+    tau: 1.0
+  inference_noise_scheduler:
+    start: -7
+    end: 3
+    tau: 1.0
+  interpolant: flow_matching
+  # Per-k test evaluation: run test once per neighbor count and print a summary table.
+  # Remove this field (or set to null) to skip and use the normal single-value test.
+  test_neighbor_counts: [0, 1, 2, 3, 4, 5]
+
+dataset:
+  full_batch_size: 1024
+  neighborhood:
+    radius: 100
+    min_neighbors: 0
+    max_neighbors: 5
+    fuse_mode: attention
+
+experiment_name_suffix: neighborhood_attention_r=100_k5
