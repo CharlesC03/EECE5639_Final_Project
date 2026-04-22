@@ -7,3 +7,4 @@ cond_dim: ${dataset.cond_dim}
 use_neighbor_attention: true
 neighbor_attention_heads: 1
 shuffle_neighbors: false
+use_attention_mask: true

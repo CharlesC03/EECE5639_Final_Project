@@ -4,6 +4,20 @@ Changes made by Claude, in reverse chronological order.
 
 ---
 
+### 2026-04-22
+
+**Prompt:** "I don't mind concentrated attention, can you make the mask a variable I can change in the config?"
+**Model:** Claude Sonnet 4.6
+**Summary:** Added `use_attention_mask: bool = True` parameter to `NeighborhoodAttentionPooler` and `GeoAdaLNMLP` in `plonk/models/networks/mlp.py`. When `false`, passes `key_padding_mask=None` to `nn.MultiheadAttention`, allowing zero-padded slots to dilute the softmax over valid neighbors. Added `use_attention_mask: true` to both `geo_adaln_mlp_neighborhood.yaml` and `geo_adaln_mlp_neighborhood_rand_cond.yaml`.
+
+---
+
+**Prompt:** "Create the config files so I can use them in experiments"
+**Model:** Claude Sonnet 4.6
+**Summary:** Created three new dataset config files in `plonk/configs/dataset/`: `osv5m_emb_neighborhood_dinov2_r100.yaml` (dinov2_vitl14_registers at 100m), `osv5m_emb_neighborhood_dinov2_r500.yaml` (dinov2_vitl14_registers at 500m), and `osv5m_emb_neighborhood_streetclip_r500.yaml` (street_clip at 500m). All use `NeighborhoodWebdataset` and mirror the structure of the existing `osv5m_emb_neighborhood.yaml`. cond_dim is 1024 for all three (verified from memmap shapes).
+
+---
+
 ### 2026-04-21
 
 **Prompt:** "Would it be better to randomize the location of where the images are inputted into the model? ... Add this in as a parameter which i can adjust from the config file"

@@ -1,9 +1,9 @@
 # @package _global_
 
 defaults:
-  - override /dataset: osv5m_emb_neighborhood
+  - override /dataset: osv5m_emb_neighborhood_streetclip_r100
   - override /model: emb_cond_cartesian
-  - override /model/network: geo_adaln_mlp_neighborhood_rand_cond
+  - override /model/network: geo_adaln_mlp
   - override /model/train_noise_scheduler: sigmoid
   - override /model/inference_noise_scheduler: sigmoid
   - override /model/loss: riemannian_flow_matching
@@ -31,9 +31,11 @@ model:
     end: 3
     tau: 1.0
   interpolant: flow_matching
-  # Per-k test evaluation: run test once per neighbor count and print a summary table.
-  # Remove this field (or set to null) to skip and use the normal single-value test.
+  # Per-k test evaluation: rebuilds the weighted average with first k neighbors
+  # for each k value and prints a summary table. test_neighbor_weight must match
+  # dataset.neighborhood.neighbor_weight below.
   test_neighbor_counts: [0, 1, 2, 3, 4, 5]
+  test_neighbor_weight: 1.0
 
 dataset:
   full_batch_size: 1024
@@ -41,6 +43,6 @@ dataset:
     radius: 100
     min_neighbors: 0
     max_neighbors: 5
-    fuse_mode: attention
+    neighbor_weight: 1.0
 
-experiment_name_suffix: neighborhood_attention_r=100_k5
+experiment_name_suffix: neighborhood_r=100_k5

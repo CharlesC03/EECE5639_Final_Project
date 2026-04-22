@@ -1,9 +1,9 @@
 # @package _global_
 
 defaults:
-  - override /dataset: osv5m_emb_neighborhood
+  - override /dataset: osv5m_emb_neighborhood_dinov2_r100
   - override /model: emb_cond_cartesian
-  - override /model/network: geo_adaln_mlp_neighborhood
+  - override /model/network: geo_adaln_mlp_neighborhood_rand_cond
   - override /model/train_noise_scheduler: sigmoid
   - override /model/inference_noise_scheduler: sigmoid
   - override /model/loss: riemannian_flow_matching

@@ -79,11 +79,12 @@ class NeighborhoodAttentionPooler(nn.Module):
     as an identity — training begins identical to the no-pooler baseline.
     """
 
-    def __init__(self, emb_dim: int, num_heads: int = 4, shuffle_neighbors: bool = False):
+    def __init__(self, emb_dim: int, num_heads: int = 4, shuffle_neighbors: bool = False, use_attention_mask: bool = True):
         super().__init__()
         self.attn = nn.MultiheadAttention(emb_dim, num_heads, batch_first=True)
         self.norm = nn.LayerNorm(emb_dim)
         self.shuffle_neighbors = shuffle_neighbors
+        self.use_attention_mask = use_attention_mask
         # nn.init.zeros_(self.attn.out_proj.weight)
         # nn.init.zeros_(self.attn.out_proj.bias)
 
@@ -111,7 +112,7 @@ class NeighborhoodAttentionPooler(nn.Module):
             query=anchor.unsqueeze(1),
             key=tokens,
             value=tokens,
-            key_padding_mask=key_padding_mask,
+            key_padding_mask=key_padding_mask if self.use_attention_mask else None,
             need_weights=False,
         )
         return self.norm(anchor + attn_out.squeeze(1))
@@ -128,6 +129,7 @@ class GeoAdaLNMLP(nn.Module):
         use_neighbor_attention: bool = False,
         neighbor_attention_heads: int = 1,
         shuffle_neighbors: bool = False,
+        use_attention_mask: bool = True,
     ):
         super().__init__()
         self.time_embedder = TimeEmbedder("positional", dim // 4, 1000, expansion=4)
@@ -143,7 +145,7 @@ class GeoAdaLNMLP(nn.Module):
         self.final_ln = nn.LayerNorm(dim, elementwise_affine=False)
         self.final_linear = nn.Linear(dim, input_dim)
         self.neighbor_pooler = (
-            NeighborhoodAttentionPooler(cond_dim, neighbor_attention_heads, shuffle_neighbors)
+            NeighborhoodAttentionPooler(cond_dim, neighbor_attention_heads, shuffle_neighbors, use_attention_mask)
             if use_neighbor_attention
             else None
         )
