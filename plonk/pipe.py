@@ -25,6 +25,15 @@ from tqdm import tqdm
 
 device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 MODELS = {
+    "local_models/StreetCLIP_Multi_Mean_Model": {
+        "emb_name": "street_clip",
+        "sampler": riemannian_flow_sampler,
+        "multi_image_mode": "average",
+    },
+    "local_models/Default_MobileCLIP_Model": {
+        "emb_name": "mobile_clip",
+        "sampler": riemannian_flow_sampler,
+    },
     "local_models/Default_DINO_Model": {
         "emb_name": "dinov2",
         "sampler": riemannian_flow_sampler,
@@ -351,45 +360,106 @@ class PlonkPipeline:
         """Sample from the model given conditioning.
 
         Args:
-            images: Conditioning input (image or list of images)
-            batch_size: Number of samples to generate (inferred from cond if not provided)
+            images: Single image, flat list of images (one prediction each), or list of
+                    lists of images (groups fused into one prediction each). Grouped input
+                    requires the model to have 'multi_image_mode' set in MODELS.
+            batch_size: Number of samples to generate (inferred from input if not provided)
             x_N: Initial noise tensor (generated if not provided)
             num_steps: Number of sampling steps (uses default if not provided)
-            sampler: Custom sampler function (uses default if not provided)
             scheduler: Custom scheduler function (uses default if not provided)
-            cfg: Classifier-free guidance scale (default 15)
+            cfg: Classifier-free guidance scale (default 0)
             generator: Random number generator
 
         Returns:
             Sampled GPS coordinates after postprocessing
         """
-        # Set up batch size and initial noise
         shape = [3]
+        multi_image_mode = MODELS.get(self.model_path, {}).get("multi_image_mode", None)
+
         if not isinstance(images, list):
             images = [images]
-        if x_N is None:
-            if batch_size is None:
-                if isinstance(images, list):
-                    batch_size = len(images)
-                else:
-                    batch_size = 1
-            x_N = torch.randn(
-                batch_size, *shape, device=self.device, generator=generator
-            )
-        else:
-            x_N = x_N.to(self.device)
-            if x_N.ndim == 3:
-                x_N = x_N.unsqueeze(0)
-            batch_size = x_N.shape[0]
 
-        # Set up batch with conditioning
-        batch = {"y": x_N}
-        batch["img"] = images
-        batch = self.cond_preprocessing(batch)
-        if len(images) > 1:
-            assert len(images) == batch_size
+        is_grouped = any([isinstance(img, list) for img in images])
+
+        if is_grouped and multi_image_mode is None:
+            raise ValueError(
+                f"Model '{self.model_path}' does not support multi-image input. "
+                "Add 'multi_image_mode' (\"average\" or \"attention\") to its MODELS entry."
+            )
+
+        if is_grouped:
+            if not all([isinstance(x, list) for x in images]):
+                images = [img if isinstance(img, list) else [img] for img in images]
+            groups = images
+            n_groups = len(groups)
+
+            if x_N is None:
+                if batch_size is None:
+                    batch_size = n_groups
+                x_N = torch.randn(batch_size, *shape, device=self.device, generator=generator)
+            else:
+                x_N = x_N.to(self.device)
+                if x_N.ndim == 3:
+                    x_N = x_N.unsqueeze(0)
+                batch_size = x_N.shape[0]
+
+            batch = {"y": x_N}
+
+            if multi_image_mode == "average":
+                fused_embs = []
+                for group in groups:
+                    g = self.cond_preprocessing({"img": group})
+                    fused_embs.append(g["emb"].mean(dim=0))
+                batch["emb"] = torch.stack(fused_embs)
+
+            elif multi_image_mode == "attention":
+                anchor_imgs = [g[0] for g in groups]
+                neighbor_groups = [g[1:] for g in groups]
+                max_k = max((len(n) for n in neighbor_groups), default=0)
+                max_k = max(max_k, 1)
+
+                anchor_embs = self.cond_preprocessing({"img": anchor_imgs})["emb"]
+                emb_dim = anchor_embs.shape[-1]
+
+                nb_embs = torch.zeros(n_groups, max_k, emb_dim, device=self.device, dtype=anchor_embs.dtype)
+                nb_mask = torch.zeros(n_groups, max_k, dtype=torch.bool, device=self.device)
+                for i, neighbors in enumerate(neighbor_groups):
+                    if neighbors:
+                        nb = self.cond_preprocessing({"img": neighbors})["emb"]
+                        nb_embs[i, :len(neighbors)] = nb
+                        nb_mask[i, :len(neighbors)] = True
+
+                batch["emb"] = anchor_embs
+                batch["neighbor_embs"] = nb_embs
+                batch["neighbor_mask"] = nb_mask
+
+            if n_groups == 1:
+                batch["emb"] = batch["emb"].repeat(batch_size, 1)
+                if "neighbor_embs" in batch:
+                    batch["neighbor_embs"] = batch["neighbor_embs"].repeat(batch_size, 1, 1)
+                    batch["neighbor_mask"] = batch["neighbor_mask"].repeat(batch_size, 1)
+            else:
+                assert n_groups == batch_size
+
         else:
-            batch["emb"] = batch["emb"].repeat(batch_size, 1)
+            # Flat list: one independent prediction per image (existing behavior)
+            if x_N is None:
+                if batch_size is None:
+                    batch_size = len(images)
+                x_N = torch.randn(batch_size, *shape, device=self.device, generator=generator)
+            else:
+                x_N = x_N.to(self.device)
+                if x_N.ndim == 3:
+                    x_N = x_N.unsqueeze(0)
+                batch_size = x_N.shape[0]
+
+            batch = {"y": x_N}
+            batch["img"] = images
+            batch = self.cond_preprocessing(batch)
+            if len(images) > 1:
+                assert len(images) == batch_size
+            else:
+                batch["emb"] = batch["emb"].repeat(batch_size, 1)
 
         # Use default sampler/scheduler if not provided
         sampler = self.sampler

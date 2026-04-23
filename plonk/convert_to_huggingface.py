@@ -4,10 +4,10 @@ import hydra
 from omegaconf import OmegaConf
 from plonk.models.pretrained_models import Plonk
 
-CHECKPOINT_PATH = "plonk/checkpoints/DINOv2_PLONK_Settings/last.ckpt"
-EXP = "osv_5m_default_dino"
+CHECKPOINT_PATH = "plonk/checkpoints/StreetCLIP_Multi_Images/last.ckpt"
+EXP = "osv_5m_streetclip_multi_mean_r100"
 
-SAVE_NAME = "Default_DINO_Model"
+SAVE_NAME = "StreetCLIP_Multi_Mean_Model"
 
 # Load your hydra config to get the network architecture
 hydra.initialize(version_base=None, config_path="../plonk/configs")

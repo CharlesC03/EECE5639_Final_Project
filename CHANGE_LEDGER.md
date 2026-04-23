@@ -4,6 +4,34 @@ Changes made by Claude, in reverse chronological order.
 
 ---
 
+### 2026-04-23
+
+**Prompt:** "Move all of these new python files you made into plonk/scripts"
+**Model:** Claude Sonnet 4.6
+**Summary:** Moved `extract_proximity_batches.py` and `plot_proximity_map.py` from the repo root into `plonk/scripts/`. Both scripts still run from the repo root.
+
+---
+
+**Prompt:** "Make a script to extract all locations of training images grouped by proximity neighbor count and plot a map coloured by group — output as PDF for LaTeX; rasterize dots at 1000 DPI"
+**Model:** Claude Sonnet 4.6
+**Summary:** Created `plot_proximity_map.py`. Scans all 490 training tars in parallel (multiprocessing) to extract GPS coordinates, joins with `index_street_clip_r100.pkl` neighbor counts, caches to `proximity_map_cache.npz`, and renders `proximity_map.pdf` — a 14×7 inch matplotlib figure with a vector Natural Earth land outline (pyshp) and 1000-DPI rasterized scatter points (one colour per group: 0=grey, 1=blue, 2=green, 3=orange, 4=red, 5+=purple). PDF is ~6 MB. Re-runs load from cache; use `--rebuild` to re-scan tars.
+
+---
+
+**Prompt:** "Extract a few batches of images in proximity to each other inside the r100 for streetclip — do it for the test dataset / Save them as images into their own folder / Also save the anchor's actual location / Make each batch have its own amount of images (1, 2, 3, 4, 5 neighbors)"
+**Model:** Claude Sonnet 4.6
+**Summary:** Created `extract_proximity_batches.py`. Loads the pre-built test split spatial index (`index_street_clip_r100.pkl`), selects one anchor per neighbor count in `[1,2,3,4,5]`, scans test tars, and saves each batch to `proximity_batches/batch_{i}/anchor.jpg`, `neighbor_{j}.jpg`, and `anchor_location.json` (lat/lon, city, country, Google Maps URL). Output directory is wiped clean on each run.
+
+---
+
+### 2026-04-23
+
+**Prompt:** "Can you add in the support for multi_image_mode, if there is not in the config for the model, ignore it and don't let you input multiple images into the model"
+**Model:** Claude Sonnet 4.6
+**Summary:** Modified `PlonkPipeline.__call__` in `plonk/pipe.py` to support grouped image input (`[[img1a, img1b], [img2a, img2b, img2c], ...]`). Added `multi_image_mode` flag to `MODELS` dict entries: `"average"` mean-fuses all images in a group into one embedding before the model; `"attention"` passes the first image as anchor (`batch["emb"]`) and the rest as `batch["neighbor_embs"]`/`batch["neighbor_mask"]` for model-side attention pooling. If `multi_image_mode` is absent from the model's entry and grouped input is provided, a `ValueError` is raised. Flat list input (one prediction per image) is unchanged.
+
+---
+
 ### 2026-04-22
 
 **Prompt:** "I don't mind concentrated attention, can you make the mask a variable I can change in the config?"
