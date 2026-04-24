@@ -24,6 +24,12 @@ Changes made by Claude, in reverse chronological order.
 
 ---
 
+**Prompt:** "Update this code to work with the new structure of the file"
+**Model:** Claude Opus 4.7
+**Summary:** Rewrote cell 10 in `plonk_example.ipynb` for the restructured notebook: it now computes `gps_coords` and the likelihood grid from `entries` (the multi-image list defined in cell 9) instead of relying on single-image variables, saves the figure to `output_path` (savefig before show), and drops redundant imports now centralized in cell 0.
+
+---
+
 **Prompt:** "What is the total portion of data in the western world?"
 **Model:** Claude Sonnet 4.6
 **Summary:** Added "Western World" region to `plonk/scripts/measure_region_coverage.py`. Defined as Europe (excl. Russia) + USA + Canada + Australia + New Zealand. Result: 65.96% of training data.
