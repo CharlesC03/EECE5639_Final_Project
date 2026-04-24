@@ -18,7 +18,11 @@ EMB_PATH    = "plonk/datasets/osv5m/neighborhood_index/test/embeddings_street_cl
 TAR_DIR     = "plonk/datasets/osv5m/test"
 OUT_DIR     = "proximity_batches"
 
-NEIGHBOR_COUNTS = [1, 2, 3, 4, 5]  # one batch per count, with exactly this many neighbors
+EXCLUDE_COUNTRIES = ["RU"]
+
+RANDOMLY_SELECT = True
+
+NEIGHBOR_COUNTS = [5] * 10  # one batch per count, with exactly this many neighbors
 
 
 def load_index(index_path):
@@ -26,14 +30,23 @@ def load_index(index_path):
         return pickle.load(f)
 
 
-def extract_batches(index, neighbor_counts):
-    """Return one batch per entry in neighbor_counts with exactly that many neighbors."""
+def extract_batches(index, neighbor_counts, oversample=20):
+    """Return up to `oversample` unique candidate batches per entry in neighbor_counts."""
     neighbor_index = index["neighbor_index"]
+    by_count = {}
+    for aid, nids in neighbor_index.items():
+        by_count.setdefault(len(nids), []).append((aid, nids))
     batches = []
+    used = set()
     for n in neighbor_counts:
-        for anchor_id, nbr_ids in neighbor_index.items():
-            if len(nbr_ids) == n:
-                batches.append((anchor_id, nbr_ids))
+        taken = 0
+        for aid, nids in by_count.get(n, []):
+            if aid in used:
+                continue
+            batches.append((aid, nids))
+            used.add(aid)
+            taken += 1
+            if taken >= oversample:
                 break
     return batches
 
@@ -91,41 +104,58 @@ def main():
         shutil.rmtree(OUT_DIR)
     os.makedirs(OUT_DIR)
 
-    for i, (anchor_id, nbr_ids) in enumerate(batches):
-        batch_dir = os.path.join(OUT_DIR, f"batch_{i}")
-        os.makedirs(batch_dir)
+    if RANDOMLY_SELECT:
+        np.random.shuffle(batches)
+
+    target = len(NEIGHBOR_COUNTS)
+    saved_count = 0
+    for anchor_id, nbr_ids in batches:
+        if saved_count >= target:
+            break
 
         anchor_str = str(anchor_id)
-        if anchor_str in id_to_tar:
-            tar_path, stem = id_to_tar[anchor_str]
-            save_bytes(extract_from_tar(tar_path, stem, "jpg"),
-                       os.path.join(batch_dir, "anchor.jpg"))
-            meta = json.loads(extract_from_tar(tar_path, stem, "json").decode())
-            location = {
-                "latitude":  meta["latitude"],
-                "longitude": meta["longitude"],
-                "city":      meta.get("city"),
-                "region":    meta.get("region"),
-                "country":   meta.get("country"),
-                "google_maps_url": (
-                    f"https://www.google.com/maps?q={meta['latitude']},{meta['longitude']}"
-                ),
-            }
-            with open(os.path.join(batch_dir, "anchor_location.json"), "w") as f:
-                json.dump(location, f, indent=2)
+        if anchor_str not in id_to_tar:
+            continue
+        tar_path, stem = id_to_tar[anchor_str]
+        meta = json.loads(extract_from_tar(tar_path, stem, "json").decode())
+        if meta.get("country") in EXCLUDE_COUNTRIES:
+            continue
+
+        batch_dir = os.path.join(OUT_DIR, f"batch_{saved_count}")
+        os.makedirs(batch_dir)
+
+        save_bytes(extract_from_tar(tar_path, stem, "jpg"),
+                   os.path.join(batch_dir, "anchor.jpg"))
+        location = {
+            "latitude":  meta["latitude"],
+            "longitude": meta["longitude"],
+            "city":      meta.get("city"),
+            "region":    meta.get("region"),
+            "country":   meta.get("country"),
+            "google_maps_url": (
+                f"https://www.google.com/maps?q={meta['latitude']},{meta['longitude']}"
+            ),
+        }
+        with open(os.path.join(batch_dir, "anchor_location.json"), "w") as f:
+            json.dump(location, f, indent=2)
 
         for j, nid in enumerate(nbr_ids):
             nid_str = str(nid)
             if nid_str in id_to_tar:
-                tar_path, stem = id_to_tar[nid_str]
-                save_bytes(extract_from_tar(tar_path, stem, "jpg"),
+                n_tar_path, n_stem = id_to_tar[nid_str]
+                save_bytes(extract_from_tar(n_tar_path, n_stem, "jpg"),
                            os.path.join(batch_dir, f"neighbor_{j}.jpg"))
 
-        saved = os.listdir(batch_dir)
-        print(f"\nbatch_{i}/  ({len(saved)} files): {sorted(saved)}")
+        files = os.listdir(batch_dir)
+        print(f"\nbatch_{saved_count}/  ({len(files)} files): {sorted(files)}")
         print(f"  anchor:    {anchor_id}  @ {location['latitude']:.5f}, {location['longitude']:.5f}"
               f"  ({location['city']}, {location['country']})")
         print(f"  neighbors: {nbr_ids}")
+        saved_count += 1
+
+    if saved_count < target:
+        print(f"\nWarning: only saved {saved_count}/{target} batches "
+              f"(ran out of candidates after excluding {EXCLUDE_COUNTRIES})")
 
     print(f"\nDone. Images saved to {OUT_DIR}/")
 

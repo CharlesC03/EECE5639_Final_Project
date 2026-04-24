@@ -181,5 +181,5 @@ notebooks
 .streamlit
 local_models/
 proximity_map_cache.npz
-# proximity_batches/
+/proximity_batches/
 run_script.sh

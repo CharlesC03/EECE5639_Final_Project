@@ -4,6 +4,38 @@ Changes made by Claude, in reverse chronological order.
 
 ---
 
+### 2026-04-24
+
+**Prompt:** "Can you modify this code to show the achor only input and the one with mutliple inputs one stacked ontop of the other, and have them share the same color bar and scale."
+**Model:** Claude Opus 4.7
+**Summary:** Replaced cell 15 in `plonk_example.ipynb` with a stacked two-panel comparison figure (single-image anchor above, multi-image below) sharing one colorbar, a common `Normalize` range, and identical contour levels derived from the combined min/max of both likelihood grids. Saves to `demo/results/russia_forest_single_vs_multi_comparison.pdf`.
+
+---
+
+**Prompt:** "You modified the wrong cell, revert that cell back to the original code and modify the cell above to this code"
+**Model:** Claude Opus 4.7
+**Summary:** Reverted cell 15 in `plonk_example.ipynb` back to the original single-image plot and moved the stacked two-panel comparison figure into cell 12 instead.
+
+---
+
+**Prompt:** "Fix the following error: ... TypeError: 'NoneType' object is not iterable" (in `extract_proximity_batches.py` line 99)
+**Model:** Claude Opus 4.7
+**Summary:** Fixed bug in `plonk/scripts/extract_proximity_batches.py` where `batches = np.random.shuffle(batches)` was assigning the `None` return value back to `batches` (shuffle is in-place). Removed the assignment so `batches` keeps the shuffled list.
+
+---
+
+**Prompt:** "Fix the code so it filters out countries I am not interested in testing"
+**Model:** Claude Opus 4.7
+**Summary:** Reworked `plonk/scripts/extract_proximity_batches.py` so `EXCLUDE_COUNTRIES` actually yields the requested number of batches. `extract_batches` now collects up to `oversample` unique anchors per neighbor count (instead of always picking the first match, which produced duplicates when `NEIGHBOR_COUNTS` repeated a value). The main loop now reads anchor metadata first, skips excluded countries before creating the batch dir, and stops at `len(NEIGHBOR_COUNTS)` successful saves — no more create-then-delete. Prints a warning if candidates run out.
+
+---
+
+**Prompt:** "How can I have git ignore just the root directory proximity_batches but not the one inside the examples folder?"
+**Model:** Claude Opus 4.7
+**Summary:** Changed `.gitignore` entry from the commented-out `# proximity_batches/` to `/proximity_batches/`. The leading slash anchors the pattern to the repo root so nested `proximity_batches/` directories (e.g., inside `examples/`) remain tracked.
+
+---
+
 ### 2026-04-23
 
 **Prompt:** "I want it using all the images as input into the model, just like the call"
