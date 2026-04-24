@@ -687,7 +687,8 @@ class PlonkPipeline:
             f"Computing likelihood over a {latitudes.size}x{longitudes.size} grid ({num_points} points)..."
         )
 
-        emb = self.cond_preprocessing({"img": [image]})["emb"]
+        imgs = image if isinstance(image, list) else [image]
+        emb = self.cond_preprocessing({"img": imgs})["emb"].mean(dim=0, keepdim=True)
 
         # 2. Process in batches
         all_likelihoods = []

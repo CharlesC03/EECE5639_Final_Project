@@ -6,6 +6,24 @@ Changes made by Claude, in reverse chronological order.
 
 ### 2026-04-23
 
+**Prompt:** "I want it using all the images as input into the model, just like the call"
+**Model:** Claude Sonnet 4.6
+**Summary:** Modified `compute_likelihood_grid` in `plonk/pipe.py` to accept a list of images. When a list is passed, embeddings for all images are averaged (matching the `average` multi-image fusion in `__call__`) before computing the likelihood grid.
+
+---
+
+**Prompt:** "Write code for a new cell in @plonk_example.ipynb where I provide a bunch of images from a directory which are in close proximity to each other and show the true location of the image"
+**Model:** Claude Opus 4.7
+**Summary:** Inserted a new cell in `plonk_example.ipynb` that reads `anchor_location.json` from the configured `image_dir` (proximity batch directory), renders the likelihood grid with predicted sample points, and overlays a red star marker at the ground-truth GPS location.
+
+---
+
+**Prompt:** "Can you make another cell which just uses one image from the folder and shows how it performs"
+**Model:** Claude Opus 4.7
+**Summary:** Added a cell in `plonk_example.ipynb` that runs the pipeline on just `anchor.jpg` from the proximity batch directory (single-image baseline), then plots the resulting likelihood grid, predicted samples, and true location — for visual comparison against the multi-image fused prediction.
+
+---
+
 **Prompt:** "What is the total portion of data in the western world?"
 **Model:** Claude Sonnet 4.6
 **Summary:** Added "Western World" region to `plonk/scripts/measure_region_coverage.py`. Defined as Europe (excl. Russia) + USA + Canada + Australia + New Zealand. Result: 65.96% of training data.
