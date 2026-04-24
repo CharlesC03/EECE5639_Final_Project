@@ -29,7 +29,7 @@ import shapefile
 INDEX_PATH  = "plonk/datasets/osv5m/neighborhood_index/train/index_street_clip_r100.pkl"
 TAR_DIR     = "plonk/datasets/osv5m/train"
 CACHE_PATH  = "proximity_map_cache.npz"
-OUT_PDF     = "diagrams/proximity_map.pdf"
+OUT_PDF     = "demo/diagrams/proximity_map.pdf"
 
 LAND_SHP    = os.path.expanduser(
     "~/.local/share/cartopy/shapefiles/natural_earth/physical/ne_110m_land.shp"
@@ -42,7 +42,7 @@ MAX_PTS_PER_GROUP  = 150_000   # subsample for fast rendering
 # ── palette ───────────────────────────────────────────────────────────────────
 
 GROUPS = {
-    0: ("#999999", "0 neighbors"),
+    0: ("#f96e9c", "0 neighbors"),
     1: ("#4e9af1", "1 neighbor"),
     2: ("#27ae60", "2 neighbors"),
     3: ("#f39c12", "3 neighbors"),

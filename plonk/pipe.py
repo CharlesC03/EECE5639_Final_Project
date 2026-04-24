@@ -30,6 +30,11 @@ MODELS = {
         "sampler": riemannian_flow_sampler,
         "multi_image_mode": "average",
     },
+    "local_models/StreetCLIP_Multi_Att_Model": {
+        "emb_name": "street_clip",
+        "sampler": riemannian_flow_sampler,
+        "multi_image_mode": "attention",
+    },
     "local_models/Default_MobileCLIP_Model": {
         "emb_name": "mobile_clip",
         "sampler": riemannian_flow_sampler,

@@ -18,6 +18,18 @@ Changes made by Claude, in reverse chronological order.
 
 ---
 
+**Prompt:** "descrease the spacing between the top and bottom charts"
+**Model:** Claude Opus 4.7
+**Summary:** Reduced vertical spacing between the two panels in cell 12's stacked comparison figure by adding `gridspec_kw={"hspace": -0.3}` to `plt.subplots()` and removing the `fig.tight_layout()` call (which would reset the manual spacing). Negative `hspace` is required here because the PlateCarree aspect ratio leaves large whitespace bands above/below each map.
+
+---
+
+**Prompt:** "How to do an overall title? I want to make it clearer that they both use the same model, but one just has one image inputted"
+**Model:** Claude Opus 4.7
+**Summary:** Added `fig.suptitle("StreetCLIP Multi-Image Model — Effect of Input Count", ...)` to cell 12's stacked comparison figure and renamed per-panel titles to "Single-image Input (Anchor Only)" / "Multi-image Input (Anchor + Neighbors)" so the framing emphasizes that both panels use the same model with differing numbers of input images.
+
+---
+
 **Prompt:** "Fix the following error: ... TypeError: 'NoneType' object is not iterable" (in `extract_proximity_batches.py` line 99)
 **Model:** Claude Opus 4.7
 **Summary:** Fixed bug in `plonk/scripts/extract_proximity_batches.py` where `batches = np.random.shuffle(batches)` was assigning the `None` return value back to `batches` (shuffle is in-place). Removed the assignment so `batches` keeps the shuffled list.
@@ -33,6 +45,12 @@ Changes made by Claude, in reverse chronological order.
 **Prompt:** "How can I have git ignore just the root directory proximity_batches but not the one inside the examples folder?"
 **Model:** Claude Opus 4.7
 **Summary:** Changed `.gitignore` entry from the commented-out `# proximity_batches/` to `/proximity_batches/`. The leading slash anchors the pattern to the repo root so nested `proximity_batches/` directories (e.g., inside `examples/`) remain tracked.
+
+---
+
+**Prompt:** "Add in the model for `local_models/StreetCLIP_Multi_Att_Model` into @plonk/pipe.py"
+**Model:** Claude Opus 4.7
+**Summary:** Added a new entry in the `MODELS` dict of `plonk/pipe.py` for `local_models/StreetCLIP_Multi_Att_Model` using `street_clip` embeddings, `riemannian_flow_sampler`, and `multi_image_mode="attention"`.
 
 ---
 

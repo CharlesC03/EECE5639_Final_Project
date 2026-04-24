@@ -5,9 +5,9 @@ from omegaconf import OmegaConf
 from plonk.models.pretrained_models import Plonk
 
 CHECKPOINT_PATH = "plonk/checkpoints/StreetCLIP_Att/last.ckpt"
-EXP = "osv_5m_streetclip_multi_mean_r100"
+EXP = "osv_5m_streetclip_multi_attention_r100"
 
-SAVE_NAME = "StreetCLIP_Multi_Mean_Model"
+SAVE_NAME = "StreetCLIP_Multi_Att_Model"
 
 # Load your hydra config to get the network architecture
 hydra.initialize(version_base=None, config_path="../plonk/configs")
