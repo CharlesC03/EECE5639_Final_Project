@@ -6,6 +6,30 @@ Changes made by Claude, in reverse chronological order.
 
 ### 2026-04-23
 
+**Prompt:** "What is the total portion of data in the western world?"
+**Model:** Claude Sonnet 4.6
+**Summary:** Added "Western World" region to `plonk/scripts/measure_region_coverage.py`. Defined as Europe (excl. Russia) + USA + Canada + Australia + New Zealand. Result: 65.96% of training data.
+
+---
+
+**Prompt:** "Print out the top 5 countries distribution of data for each number of neighbors"
+**Model:** Claude Sonnet 4.6
+**Summary:** Extended `plonk/scripts/measure_country_coverage.py` to also show top-5 country breakdown per neighbor-count group (0, 1, 2, 3, 4, 5+). Loads `nbrs` array from the GPS cache, classifies all points once, then filters by group to compute per-group country distributions.
+
+---
+
+**Prompt:** "Make a new script which lists out the percentage of data by country"
+**Model:** Claude Sonnet 4.6
+**Summary:** Created `plonk/scripts/measure_country_coverage.py`. Iterates all 177 Natural Earth 110m countries, assigns each of the 4.9M training points to a country using bbox pre-filter + matplotlib Path.contains_points, and prints a table sorted by image count descending with country name, count, and percentage.
+
+---
+
+**Prompt:** "Write a script to measure the percentage of training data in Europe, USA, and Japan individually and combined"
+**Model:** Claude Sonnet 4.6
+**Summary:** Created `plonk/scripts/measure_region_coverage.py`. Loads the GPS cache from `proximity_map_cache.npz`, downloads the Natural Earth 110m countries shapefile via cartopy's shapereader (pyshp only), and classifies all 4.9M points using bounding-box pre-filtering + matplotlib `Path.contains_points`. Europe excludes Russia. Results: Europe 35.46%, USA 24.70%, Japan 3.92%, combined 64.08%.
+
+---
+
 **Prompt:** "Move all of these new python files you made into plonk/scripts"
 **Model:** Claude Sonnet 4.6
 **Summary:** Moved `extract_proximity_batches.py` and `plot_proximity_map.py` from the repo root into `plonk/scripts/`. Both scripts still run from the repo root.
