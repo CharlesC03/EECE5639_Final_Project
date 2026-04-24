@@ -41,6 +41,23 @@ class DiffGeolocalizer(L.LightningModule):
 
         self.interpolant = cfg.interpolant
 
+        # Optional: per-neighbor-count evaluation (for attention-mode neighbor experiments).
+        # When set (e.g. [0, 1, 2, 3, 4, 5]) test_step runs once per k using the first k
+        # neighbors from the dataset and logs/prints metrics for each k separately.
+        self.test_neighbor_counts = (
+            list(cfg.test_neighbor_counts)
+            if getattr(cfg, "test_neighbor_counts", None) is not None
+            else None
+        )
+        # Weight per neighbor when the model is in averaging mode. Should match
+        # dataset.neighborhood.neighbor_weight used at training time.
+        self.test_neighbor_weight = float(getattr(cfg, "test_neighbor_weight", 1.0))
+        if self.test_neighbor_counts is not None:
+            keys = [str(k) for k in self.test_neighbor_counts] + ["overall"]
+            self.test_metrics_per_k = nn.ModuleDict(
+                {key: instantiate(cfg.test_metrics) for key in keys}
+            )
+
     def training_step(self, batch, batch_idx):
         with torch.no_grad():
             batch = self.data_preprocessing(batch)
@@ -223,13 +240,165 @@ class DiffGeolocalizer(L.LightningModule):
         ]
         self.test_metrics.update({"gps": samples}, batch)
 
+    @staticmethod
+    def _filter_batch(batch, idx):
+        """Subset every per-sample field in batch by idx (tensor of indices)."""
+        idx_list = idx.cpu().tolist() if torch.is_tensor(idx) else list(idx)
+        out = {}
+        for key, val in batch.items():
+            if torch.is_tensor(val):
+                out[key] = val[idx]
+            elif isinstance(val, (list, tuple)):
+                out[key] = [val[i] for i in idx_list]
+            else:
+                out[key] = val
+        return out
+
+    def test_step_vary_neighbors(self, batch, batch_idx):
+        """Evaluate the model with a controlled number of neighbor images per sample.
+
+        Each configured k runs on the subset of samples that have *at least* k real
+        neighbors available (and takes k of them — the dataset's random.sample gives
+        a random subset when the sample has more than k). The "overall" bucket uses
+        every sample with whatever neighbors it happens to have, so it matches the
+        end-to-end evaluation you'd get from normal inference.
+
+        Works for both fusion modes:
+          - Attention (model has NeighborhoodAttentionPooler): passes first k neighbors
+            with mask=True to the pooler.
+          - Averaging (no pooler): rebuilds the weighted average of anchor + first k
+            neighbors and passes it as `emb`. Uses batch["anchor_emb"] so the
+            dataset-side pre-average on `emb` is ignored.
+
+        Same x_N noise is reused across k values so differences reflect the effect
+        of added neighbors, not sampling variance.
+        """
+        batch = self.data_preprocessing(batch)
+        batch = self.cond_preprocessing(batch)
+        batch_size = batch["x_0"].shape[0]
+        cond_key = self.cfg.cond_preprocessing.output_key
+
+        if isinstance(self.manifold, Sphere):
+            x_N = self.manifold.random_base(
+                batch_size, self.input_dim, device=self.device
+            )
+            x_N = x_N.reshape(batch_size, self.input_dim)
+        else:
+            x_N = torch.randn(
+                batch_size,
+                self.input_dim,
+                device=self.device,
+                generator=self.test_generator,
+            )
+
+        has_pooler = getattr(self.ema_network, "neighbor_pooler", None) is not None
+        full_mask = batch["neighbor_mask"]
+        neighbor_embs = batch["neighbor_embs"]
+        anchor_emb = batch["anchor_emb"] if "anchor_emb" in batch else batch[cond_key]
+        available = full_mask.sum(dim=-1)  # (B,) — real neighbor count per sample
+
+        def _run_bucket(label, filter_idx, anchor_i, neighbors_i, mask_i, xN_i, gt_i):
+            if len(filter_idx) == 0:
+                return
+            if has_pooler:
+                sample_batch = {
+                    "y": xN_i,
+                    cond_key: anchor_i,
+                    "neighbor_embs": neighbors_i,
+                    "neighbor_mask": mask_i,
+                }
+            else:
+                valid = mask_i.to(anchor_i.dtype)  # (b, k)
+                neighbor_sum = (neighbors_i * valid.unsqueeze(-1)).sum(dim=1)
+                effective_k = valid.sum(dim=1, keepdim=True)
+                total_weight = 1.0 + effective_k * self.test_neighbor_weight
+                fused = torch.where(
+                    effective_k > 0,
+                    (anchor_i + self.test_neighbor_weight * neighbor_sum) / total_weight,
+                    anchor_i,
+                )
+                sample_batch = {"y": xN_i, cond_key: fused}
+            output = self.test_sampler(
+                self.ema_model,
+                sample_batch,
+                conditioning_keys=cond_key,
+                scheduler=self.inference_noise_scheduler,
+                cfg_rate=self.cfg.cfg_rate,
+                generator=self.test_generator,
+            )
+            samples = self.postprocessing(output)
+            self.test_metrics_per_k[label].update({"gps": samples}, gt_i)
+
+        # Per-k buckets: samples with at least k real neighbors, using exactly k.
+        for k in self.test_neighbor_counts:
+            filter_idx = torch.where(available >= k)[0]
+            if len(filter_idx) == 0:
+                continue
+            gt_i = self._filter_batch(batch, filter_idx)
+            anchor_i = anchor_emb[filter_idx]
+            xN_i = x_N[filter_idx]
+            if k == 0:
+                neighbors_i = neighbor_embs[filter_idx, :0]
+                mask_i = full_mask[filter_idx, :0]
+            else:
+                neighbors_i = neighbor_embs[filter_idx, :k]
+                mask_i = full_mask[filter_idx, :k]  # all True since we filtered >= k
+            _run_bucket(str(k), filter_idx, anchor_i, neighbors_i, mask_i, xN_i, gt_i)
+
+        # Overall bucket: all samples, each with its full set of available neighbors.
+        all_idx = torch.arange(batch_size, device=self.device)
+        _run_bucket(
+            "overall", all_idx, anchor_emb, neighbor_embs, full_mask, x_N, batch
+        )
+
     def test_step(self, batch, batch_idx):
-        if self.cfg.compute_swarms:
+        if self.test_neighbor_counts is not None:
+            self.test_step_vary_neighbors(batch, batch_idx)
+        elif self.cfg.compute_swarms:
             self.test_best_nll(batch, batch_idx)
         else:
             self.test_step_simple(batch, batch_idx)
 
     def on_test_epoch_end(self):
+        if self.test_neighbor_counts is not None:
+            rows = []
+            labels = [str(k) for k in self.test_neighbor_counts] + ["overall"]
+            for label in labels:
+                metric = self.test_metrics_per_k[label]
+                count = int(metric.count.item())
+                if count == 0:
+                    continue
+                try:
+                    metrics = metric.compute()
+                except Exception as e:
+                    # HaversineMetrics.manifold_metrics chunks into 20 splits and calls
+                    # np.argpartition(k=manifold_k+1) on each, which fails for small
+                    # buckets. Basic distance/accuracy metrics are still valid — recompute
+                    # them manually so the bucket isn't dropped from the table.
+                    self.print(
+                        f"[warn] bucket {label} (n={count}): manifold_metrics skipped ({e})"
+                    )
+                    metrics = self._basic_metrics(metric)
+                self.log(
+                    f"test/{label}/n_samples",
+                    float(count),
+                    sync_dist=True,
+                    on_step=False,
+                    on_epoch=True,
+                    reduce_fx="sum",
+                )
+                for metric_name, metric_value in metrics.items():
+                    self.log(
+                        f"test/{label}/{metric_name}",
+                        metric_value,
+                        sync_dist=True,
+                        on_step=False,
+                        on_epoch=True,
+                    )
+                rows.append((label, count, metrics))
+            self._print_per_k_summary(rows)
+            return
+
         metrics = self.test_metrics.compute()
         for metric_name, metric_value in metrics.items():
             self.log(
@@ -239,6 +408,66 @@ class DiffGeolocalizer(L.LightningModule):
                 on_step=False,
                 on_epoch=True,
             )
+
+    @staticmethod
+    def _basic_metrics(metric):
+        """Reproduce HaversineMetrics.compute() without the manifold_metrics step."""
+        count = metric.count.float()
+        out = {
+            "Haversine": (metric.haversine_sum / count).item(),
+            "Geoguessr": (metric.geoguessr_sum / count).item(),
+        }
+        for acc in metric.acc_radius:
+            out[f"Accuracy_{acc}_km_radius"] = (
+                metric.__dict__[f"close_enough_points_{acc}"] / count
+            ).item()
+        for acc in metric.acc_area:
+            n_acc = metric.__dict__[f"count_{acc}"]
+            if int(n_acc.item()) > 0:
+                out[f"Accuracy_{acc}"] = (
+                    metric.__dict__[f"close_enough_points_{acc}"] / n_acc
+                ).item()
+        return out
+
+    def _print_per_k_summary(self, rows):
+        """Format a per-k summary table. rows = [(label, n_samples, metrics_dict), ...].
+
+        Columns are the union of metric keys across all rows so buckets that fell
+        back to basic metrics (missing manifold precision/recall/density/coverage)
+        don't break the schema — missing cells show as '-'.
+        """
+        if not rows:
+            return
+        metric_names = []
+        seen = set()
+        for _, _, m in rows:
+            for name in m:
+                if name not in seen:
+                    seen.add(name)
+                    metric_names.append(name)
+
+        def cell(m, name):
+            return f"{m[name]:.4f}" if name in m else "-"
+
+        header = ["label", "n"] + metric_names
+        label_w = max(len("label"), max(len(str(label)) for label, _, _ in rows))
+        n_w = max(len("n"), max(len(str(n)) for _, n, _ in rows))
+        metric_ws = [
+            max(len(name), max(len(cell(m, name)) for _, _, m in rows))
+            for name in metric_names
+        ]
+        col_widths = [label_w, n_w] + metric_ws
+
+        def fmt_row(cells):
+            return "  ".join(str(c).rjust(w) for c, w in zip(cells, col_widths))
+
+        lines = ["", "=== Test metrics by neighbor count ==="]
+        lines.append(fmt_row(header))
+        lines.append("-" * (sum(col_widths) + 2 * (len(col_widths) - 1)))
+        for label, n, m in rows:
+            lines.append(fmt_row([label, n] + [cell(m, name) for name in metric_names]))
+        lines.append("")
+        self.print("\n".join(lines))
 
     def configure_optimizers(self):
         if self.cfg.optimizer.exclude_ln_and_biases_from_weight_decay:

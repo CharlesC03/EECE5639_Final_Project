@@ -1,0 +1,64 @@
+defaults:
+  - train_transform: empty
+  - test_transform: empty
+  - _self_
+
+name: osv5m_${dataset.embedding_name}_neighborhood_r500
+full_batch_size: 1024
+eval_batch_size: 4096
+cond_dim: 1024
+output_type: emb
+embedding_name: street_clip
+
+# Neighborhood sampling parameters
+neighborhood:
+  radius: 500
+  min_neighbors: 0
+  max_neighbors: 5
+  neighbor_weight: 1.0
+  fuse_mode: average
+
+train_dataset:
+  _partial_: true
+  _target_: plonk.data.neighborhood_dataset.NeighborhoodWebdataset
+  root: ${data_dir}/osv5m/train/
+  index_dir: ${data_dir}/osv5m/neighborhood_index/train/
+  train: true
+  embedding_name: ${dataset.embedding_name}
+  radius: ${dataset.neighborhood.radius}
+  min_neighbors: ${dataset.neighborhood.min_neighbors}
+  max_neighbors: ${dataset.neighborhood.max_neighbors}
+  neighbor_weight: ${dataset.neighborhood.neighbor_weight}
+  fuse_mode: ${dataset.neighborhood.fuse_mode}
+  return_image: false
+  metadata_attributes: []
+
+val_dataset:
+  _partial_: true
+  _target_: plonk.data.neighborhood_dataset.NeighborhoodWebdataset
+  root: ${data_dir}/osv5m/val/
+  index_dir: ${data_dir}/osv5m/neighborhood_index/val/
+  train: false
+  embedding_name: ${dataset.embedding_name}
+  radius: ${dataset.neighborhood.radius}
+  min_neighbors: ${dataset.neighborhood.min_neighbors}
+  max_neighbors: ${dataset.neighborhood.max_neighbors}
+  neighbor_weight: ${dataset.neighborhood.neighbor_weight}
+  fuse_mode: ${dataset.neighborhood.fuse_mode}
+  return_image: false
+  metadata_attributes: ["unique_country", "unique_region", "unique_sub-region", "unique_city"]
+
+test_dataset:
+  _partial_: true
+  _target_: plonk.data.neighborhood_dataset.NeighborhoodWebdataset
+  root: ${data_dir}/osv5m/test/
+  index_dir: ${data_dir}/osv5m/neighborhood_index/test/
+  train: false
+  embedding_name: ${dataset.embedding_name}
+  radius: ${dataset.neighborhood.radius}
+  min_neighbors: ${dataset.neighborhood.min_neighbors}
+  max_neighbors: ${dataset.neighborhood.max_neighbors}
+  neighbor_weight: ${dataset.neighborhood.neighbor_weight}
+  fuse_mode: ${dataset.neighborhood.fuse_mode}
+  return_image: false
+  metadata_attributes: ["unique_country", "unique_region", "unique_sub-region", "unique_city"]

@@ -30,6 +30,12 @@ def riemannian_flow_sampler(
             [batch[conditioning_keys], torch.zeros_like(batch[conditioning_keys])],
             dim=0,
         )
+        # Pass neighbor-attention keys through; uncond half drops all neighbors (mask=0)
+        for key in ("neighbor_embs", "neighbor_mask"):
+            if key in batch:
+                stacked_batch[key] = torch.cat(
+                    [batch[key], torch.zeros_like(batch[key])], dim=0,
+                )
     for step, (gamma_now, gamma_next) in enumerate(zip(gammas[:-1], gammas[1:])):
         with torch.cuda.amp.autocast(dtype=dtype):
             if cfg_rate > 0 and conditioning_keys is not None:

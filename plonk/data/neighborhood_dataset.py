@@ -51,6 +51,7 @@ class NeighborhoodWebdataset(wds.DataPipeline):
         min_neighbors=0,
         max_neighbors=5,
         neighbor_weight=1.0,
+        fuse_mode="average",
         image_transforms=None,
         distributed=True,
         train=True,
@@ -72,6 +73,8 @@ class NeighborhoodWebdataset(wds.DataPipeline):
             min_neighbors: minimum number of neighbors to sample (0 = sometimes use anchor alone)
             max_neighbors: maximum number of neighbors to sample per anchor
             neighbor_weight: weight of each neighbor relative to anchor (1.0 = equal weight)
+            fuse_mode: "average" — weighted-average into emb (original behavior);
+                       "attention" — return padded neighbor_embs + neighbor_mask for model-side fusion
             image_transforms: optional image transforms
             Other args: same as GPSWebdataset
         """
@@ -79,6 +82,7 @@ class NeighborhoodWebdataset(wds.DataPipeline):
         self.min_neighbors = min_neighbors
         self.max_neighbors = max_neighbors
         self.neighbor_weight = neighbor_weight
+        self.fuse_mode = fuse_mode
         self.train = train
 
         # Load the pre-built spatial index
@@ -197,9 +201,10 @@ class NeighborhoodWebdataset(wds.DataPipeline):
         outputs_rename["gps"] = "json"
         outputs_transforms["gps"] = get_gps
 
-        # Preserve __key__ through the pipeline
+        # Preserve __key__ through filter_dict_keys so _fuse_neighbors can read it.
+        # (wds.rename/map_dict/decode all preserve it automatically, but filter_dict_keys
+        # drops any key not explicitly listed.)
         outputs_rename["__key__"] = "__key__"
-        outputs_transforms["__key__"] = lambda x: x
 
         pipeline.extend(
             [
@@ -220,46 +225,65 @@ class NeighborhoodWebdataset(wds.DataPipeline):
             ]
         )
 
-        # Add the neighborhood fusion step, then strip internal keys
         pipeline.append(wds.map(self._fuse_neighbors, handler=log_and_continue))
-        pipeline.append(wds.map(self._strip_internal_keys))
 
         super().__init__(*pipeline)
 
-    @staticmethod
-    def _strip_internal_keys(sample):
-        """Remove webdataset internal keys (__key__, __url__) before collation."""
-        return {k: v for k, v in sample.items() if not k.startswith("__")}
-
     def _fuse_neighbors(self, sample):
-        """Look up neighbors and fuse their embeddings with the anchor."""
+        """Look up neighbors and fuse according to fuse_mode.
+
+        Both modes emit padded raw neighbor tensors so test-time code can vary k:
+            sample["neighbor_embs"]: (max_neighbors, emb_dim) — zero-padded
+            sample["neighbor_mask"]: (max_neighbors,) bool — True = valid slot
+
+        "average": pre-fuses a weighted average into sample["emb"] (training behavior
+            is unchanged). Also stores sample["anchor_emb"] = raw anchor so test-time
+            code can rebuild the average for different k values.
+        "attention": leaves sample["emb"] as the raw anchor; model-side pooler does
+            the fusion using neighbor_embs + neighbor_mask.
+        """
         image_id = sample.get("__key__", None)
+        k = 0
+        selected_idxs = []
 
         if image_id is not None and image_id in self.neighbor_index:
             neighbors = self.neighbor_index[image_id]
-
             if len(neighbors) > 0:
-                # Random number of neighbors to sample
-                k = random.randint(
-                    min(self.min_neighbors, len(neighbors)),
-                    min(self.max_neighbors, len(neighbors)),
-                )
-
+                if self.train:
+                    k = random.randint(
+                        min(self.min_neighbors, len(neighbors)),
+                        min(self.max_neighbors, len(neighbors)),
+                    )
+                else:
+                    # Eval: deterministically load all available neighbors (up to max)
+                    # so the per-k test sweep isn't capped by a random per-sample draw.
+                    k = min(self.max_neighbors, len(neighbors))
                 if k > 0:
                     selected = random.sample(neighbors, k)
-                    # Look up neighbor embeddings from memmap
-                    neighbor_idxs = [self.id_to_idx[nid] for nid in selected]
-                    neighbor_embs = torch.from_numpy(
-                        self.embeddings[neighbor_idxs].copy()
-                    )  # (k, emb_dim)
+                    selected_idxs = [self.id_to_idx[nid] for nid in selected]
 
-                    # Weighted average: anchor weight=1, each neighbor=neighbor_weight
-                    anchor_emb = sample["emb"]  # (emb_dim,)
-                    total_weight = 1.0 + k * self.neighbor_weight
-                    fused = (
-                        anchor_emb + self.neighbor_weight * neighbor_embs.sum(dim=0)
-                    ) / total_weight
-                    sample["emb"] = fused
+        emb_dim = sample["emb"].shape[-1]
+        max_k = self.max_neighbors
+        padded = torch.zeros(max_k, emb_dim, dtype=sample["emb"].dtype)
+        mask = torch.zeros(max_k, dtype=torch.bool)
+        if k > 0:
+            n_embs = torch.from_numpy(self.embeddings[selected_idxs].copy())
+            padded[:k] = n_embs
+            mask[:k] = True
+        sample["neighbor_embs"] = padded
+        sample["neighbor_mask"] = mask
+
+        if self.fuse_mode == "average":
+            sample["anchor_emb"] = sample["emb"].clone()
+            if k > 0:
+                total_weight = 1.0 + k * self.neighbor_weight
+                sample["emb"] = (
+                    sample["emb"] + self.neighbor_weight * padded[:k].sum(dim=0)
+                ) / total_weight
+        elif self.fuse_mode == "attention":
+            pass
+        else:
+            raise ValueError(f"Unknown fuse_mode: {self.fuse_mode!r}")
 
         return sample
 

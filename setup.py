@@ -24,6 +24,8 @@ setup(
         "scipy==1.13.1",
         "einops",
         "torchdiffeq",
+        "open-clip-torch>=2.20.0",
+        "timm",
     ],
     include_package_data=True,
     extras_require={
@@ -35,6 +37,8 @@ setup(
             "reverse_geocoder",
             "matplotlib",
             "webdataset==0.2.57",
+            "joblib",
+            "peft",
         ],
         "demo": ["streamlit", "streamlit-extras", "plotly"],
     },
