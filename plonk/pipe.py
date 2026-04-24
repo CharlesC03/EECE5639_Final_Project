@@ -466,6 +466,18 @@ class PlonkPipeline:
             else:
                 batch["emb"] = batch["emb"].repeat(batch_size, 1)
 
+            # Attention-pooler models always run through the pooler during training
+            # (with empty/masked neighbors when k=0). Match that at single-image
+            # inference by providing zero-padded neighbors with an all-False mask.
+            if getattr(self.network, "neighbor_pooler", None) is not None:
+                emb_dim = batch["emb"].shape[-1]
+                batch["neighbor_embs"] = torch.zeros(
+                    batch_size, 1, emb_dim, device=self.device, dtype=batch["emb"].dtype
+                )
+                batch["neighbor_mask"] = torch.zeros(
+                    batch_size, 1, dtype=torch.bool, device=self.device
+                )
+
         # Use default sampler/scheduler if not provided
         sampler = self.sampler
         if scheduler is None:

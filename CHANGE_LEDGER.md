@@ -54,6 +54,12 @@ Changes made by Claude, in reverse chronological order.
 
 ---
 
+**Prompt:** "Why for 1 image is the model struggling in the inference, but doesn't show in the testing results? ... Yes add that"
+**Model:** Claude Opus 4.7
+**Summary:** Fixed train/inference mismatch for attention-pooler models in the flat-list branch of `PlonkPipeline.__call__`. Training and testing always route through `NeighborhoodAttentionPooler` (with zero-padded neighbors + all-False mask when k=0), but single-image inference previously omitted `neighbor_embs`/`neighbor_mask`, causing the pooler to be skipped via the `"neighbor_embs" in batch` guard in `mlp.py`. Now, when `self.network.neighbor_pooler` exists, the flat-list branch sets an empty `neighbor_embs` (zeros of shape `(B, 1, D)`) and an all-False `neighbor_mask`, so the pooler always runs and the conditioning distribution matches training.
+
+---
+
 ### 2026-04-23
 
 **Prompt:** "I want it using all the images as input into the model, just like the call"
